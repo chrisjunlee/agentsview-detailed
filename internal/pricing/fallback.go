@@ -2,7 +2,7 @@ package pricing
 
 // FallbackVersion must be bumped whenever FallbackPricing
 // rates change so the startup seeder knows to re-upsert.
-const FallbackVersion = "2026-04-13"
+const FallbackVersion = "2026-05-03"
 
 // FallbackPricing returns hardcoded pricing for key Claude
 // models. Used when the LiteLLM fetch fails.
@@ -90,6 +90,22 @@ func FallbackPricing() []ModelPricing {
 			OutputPerMTok:        4.0,
 			CacheCreationPerMTok: 1.0,
 			CacheReadPerMTok:     0.08,
+		},
+		// Pi models not yet in LiteLLM (estimated from predecessors)
+		{
+			ModelPattern:  "mimo-v2.5-pro",
+			InputPerMTok:  0.20,
+			OutputPerMTok: 0.60,
+		},
+		{
+			ModelPattern:  "mimo-v2-pro",
+			InputPerMTok:  0.20,
+			OutputPerMTok: 0.60,
+		},
+		{
+			ModelPattern:  "google/gemma-4-31b-it",
+			InputPerMTok:  0.10,
+			OutputPerMTok: 0.40,
 		},
 	}
 }

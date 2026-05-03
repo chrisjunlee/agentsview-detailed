@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/tidwall/gjson"
+	"github.com/wesm/agentsview/internal/pricing"
 )
 
 // UsageFilter controls the date range, agent, and timezone
@@ -253,6 +254,20 @@ func (db *DB) loadPricingMap(
 			output:        cp.Output,
 			cacheCreation: cp.CacheCreation,
 			cacheRead:     cp.CacheRead,
+		}
+	}
+
+	// Apply model aliases: for each alias, if the source model
+	// has no pricing but the target does, copy the target's rates
+	// to the source key. This allows Pi session model names
+	// (e.g. "deepseek-v4-flash") to resolve to LiteLLM pricing
+	// keys (e.g. "deepseek/deepseek-v3.2").
+	for src, dst := range pricing.ModelAliases {
+		if _, exists := out[src]; exists {
+			continue
+		}
+		if rates, ok := out[dst]; ok {
+			out[src] = rates
 		}
 	}
 
