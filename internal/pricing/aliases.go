@@ -1,44 +1,49 @@
 package pricing
 
 // ModelAliases maps model IDs as they appear in Pi session
-// logs to their corresponding LiteLLM pricing keys. This
-// allows cost estimation for models accessed via subscription
-// APIs (opencode.ai, OpenRouter free tier) that report zero
-// cost in session data.
+// logs to pricing keys. Models with direct entries in
+// FallbackPricing are keyed by their bare session name;
+// aliases for those models point to the bare name so
+// prefixed variants inherit the correct fallback rates
+// instead of (often wrong) LiteLLM entries.
 var ModelAliases = map[string]string{
-	// opencode-go provider models (bare names)
-	"deepseek-v4-flash": "deepseek/deepseek-v3.2",
-	"deepseek-v4-pro":   "deepseek/deepseek-v3",
-	"kimi-k2.6":         "moonshot/kimi-k2.6",
-	"kimi-k2.5":         "moonshot/kimi-k2.5",
-	"glm-5":             "zai/glm-5",
-	"glm-5.1":           "zai/glm-5",
-	"minimax-m2.5":      "minimax/MiniMax-M2.5",
-	"minimax-m2.7":      "minimax/MiniMax-M2.5",
-	"qwen3.5-plus":      "openrouter/qwen/qwen3.5-plus-02-15",
-	"qwen3.6-plus":      "openrouter/qwen/qwen3.5-plus-02-15",
-	"mimo-v2.5":         "novita/xiaomimimo/mimo-v2-flash",
-	"mimo-v2-omni":      "novita/xiaomimimo/mimo-v2-flash",
+	// Models with correct rates in FallbackPricing — bare
+	// name aliases kept for models that also appear under
+	// LiteLLM keys (alias is skipped when the bare name
+	// already has pricing, but listed for documentation).
+	"kimi-k2.5": "moonshot/kimi-k2.5",
+	"glm-5":     "zai/glm-5",
 
-	// opencode-go provider models (prefixed variants seen in session logs)
-	"opencode-go/deepseek-v4-flash": "deepseek/deepseek-v3.2",
-	"opencode-go/deepseek-v4-pro":   "deepseek/deepseek-v3",
-	"opencode-go/kimi-k2.6":         "moonshot/kimi-k2.6",
+	// Models whose LiteLLM entries have wrong rates — alias
+	// to bare name (which has correct fallback rates).
+	"qwen3.6-plus":  "qwen3.5-plus",
+	"mimo-v2-omni":  "mimo-v2.5",
+	"minimax-m2.5":  "minimax/MiniMax-M2.5",
+
+	// Prefixed variants → bare session names
+	"deepseek/deepseek-v4-flash":   "deepseek-v4-flash",
+	"opencode-go/deepseek-v4-flash": "deepseek-v4-flash",
+	"opencode-go/deepseek-v4-pro":   "deepseek-v4-pro",
+	"opencode-go/kimi-k2.6":         "kimi-k2.6",
 	"opencode-go/kimi-k2.5":         "moonshot/kimi-k2.5",
-	"opencode-go/glm-5":             "zai/glm-5",
-	"opencode-go/glm-5.1":           "zai/glm-5",
+	"opencode-go/glm-5":             "glm-5.1",
+	"opencode-go/glm-5.1":           "glm-5.1",
 	"opencode-go/minimax-m2.5":      "minimax/MiniMax-M2.5",
-	"opencode-go/minimax-m2.7":      "minimax/MiniMax-M2.5",
-	"opencode-go/qwen3.5-plus":      "openrouter/qwen/qwen3.5-plus-02-15",
-	"opencode-go/qwen3.6-plus":      "openrouter/qwen/qwen3.5-plus-02-15",
-	"opencode-go/mimo-v2.5":         "novita/xiaomimimo/mimo-v2-flash",
+	"opencode-go/minimax-m2.7":      "minimax-m2.7",
+	"opencode-go/qwen3.5-plus":      "qwen3.5-plus",
+	"opencode-go/qwen3.6-plus":      "qwen3.5-plus",
+	"opencode-go/mimo-v2.5":         "mimo-v2.5",
 	"opencode-go/mimo-v2.5-pro":     "mimo-v2.5-pro",
-	"opencode-go/mimo-v2-omni":      "novita/xiaomimimo/mimo-v2-flash",
+	"opencode-go/mimo-v2-omni":      "mimo-v2.5",
 	"opencode-go/mimo-v2-pro":       "mimo-v2-pro",
 
 	// Moonshot-prefixed variants
-	"moonshotai/kimi-k2.6": "moonshot/kimi-k2.6",
+	"moonshotai/kimi-k2.6": "kimi-k2.6",
 	"moonshotai/kimi-k2.5": "moonshot/kimi-k2.5",
+
+	// Free-tier model names seen in session data
+	"minimax-m2.5-free":    "minimax/MiniMax-M2.5",
+	"nemotron-3-super-free": "nvidia.nemotron-super-3-120b",
 
 	// OpenRouter free-tier models → paid equivalents
 	"qwen/qwen3-coder:free":                       "openrouter/qwen/qwen3-coder",

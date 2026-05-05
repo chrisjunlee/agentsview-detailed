@@ -2,11 +2,12 @@ package pricing
 
 // FallbackVersion must be bumped whenever FallbackPricing
 // rates change so the startup seeder knows to re-upsert.
-const FallbackVersion = "2026-05-03"
+const FallbackVersion = "2026-05-03.1"
 
 // FallbackPricing returns hardcoded pricing for key Claude
-// models. Used when the LiteLLM fetch fails.
-// Prices in USD per million tokens, current as of 2026-04.
+// models and Pi session models. Used when the LiteLLM fetch
+// fails, and to override LiteLLM entries that have wrong rates.
+// Prices in USD per million tokens.
 func FallbackPricing() []ModelPricing {
 	return []ModelPricing{
 		// Current model names (used by Claude Code / Codex)
@@ -91,16 +92,63 @@ func FallbackPricing() []ModelPricing {
 			CacheCreationPerMTok: 1.0,
 			CacheReadPerMTok:     0.08,
 		},
-		// Pi models not yet in LiteLLM (estimated from predecessors)
+		// Pi models — rates from api-cost-comparison/pricing.json,
+		// sourced from each provider's official pricing page.
+		// Keyed by actual session model name so they take
+		// precedence over (often wrong) LiteLLM alias lookups.
 		{
-			ModelPattern:  "mimo-v2.5-pro",
-			InputPerMTok:  0.20,
-			OutputPerMTok: 0.60,
+			ModelPattern:     "deepseek-v4-flash",
+			InputPerMTok:     0.14,
+			OutputPerMTok:    0.28,
+			CacheReadPerMTok: 0.0028,
+		},
+		{
+			ModelPattern:     "deepseek-v4-pro",
+			InputPerMTok:     1.74,
+			OutputPerMTok:    3.48,
+			CacheReadPerMTok: 0.0145,
+		},
+		{
+			ModelPattern:     "kimi-k2.6",
+			InputPerMTok:     0.95,
+			OutputPerMTok:    4.00,
+			CacheReadPerMTok: 0.16,
+		},
+		{
+			ModelPattern:     "glm-5.1",
+			InputPerMTok:     1.40,
+			OutputPerMTok:    4.40,
+			CacheReadPerMTok: 0.26,
+		},
+		{
+			ModelPattern:     "mimo-v2.5-pro",
+			InputPerMTok:     1.00,
+			OutputPerMTok:    3.00,
+			CacheReadPerMTok: 0.20,
+		},
+		{
+			ModelPattern:     "mimo-v2.5",
+			InputPerMTok:     0.40,
+			OutputPerMTok:    2.00,
+			CacheReadPerMTok: 0.08,
 		},
 		{
 			ModelPattern:  "mimo-v2-pro",
-			InputPerMTok:  0.20,
-			OutputPerMTok: 0.60,
+			InputPerMTok:  1.00,
+			OutputPerMTok: 3.00,
+		},
+		{
+			ModelPattern:         "minimax-m2.7",
+			InputPerMTok:         0.30,
+			OutputPerMTok:        1.20,
+			CacheCreationPerMTok: 0.375,
+			CacheReadPerMTok:     0.06,
+		},
+		{
+			ModelPattern:     "qwen3.5-plus",
+			InputPerMTok:     0.40,
+			OutputPerMTok:    2.40,
+			CacheReadPerMTok: 0.04,
 		},
 		{
 			ModelPattern:  "google/gemma-4-31b-it",
