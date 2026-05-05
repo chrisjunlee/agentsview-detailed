@@ -276,7 +276,10 @@
       <DateRangeSelector
         from={usage.from}
         to={usage.to}
+        fromTime={usage.fromTime}
+        toTime={usage.toTime}
         onChange={(from, to) => usage.setDateRange(from, to)}
+        onTimeChange={(ft, tt) => usage.setTimeRange(ft, tt)}
         onPreset={(days) => usage.setRollingWindow(days)}
       />
 

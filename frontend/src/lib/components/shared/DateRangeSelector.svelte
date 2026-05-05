@@ -9,11 +9,22 @@
   interface Props {
     from: string;
     to: string;
+    fromTime?: string;
+    toTime?: string;
     onChange: (from: string, to: string) => void;
+    onTimeChange?: (fromTime: string, toTime: string) => void;
     onPreset?: (days: number) => void;
   }
 
-  let { from, to, onChange, onPreset }: Props = $props();
+  let {
+    from,
+    to,
+    fromTime = "00:00",
+    toTime = "00:00",
+    onChange,
+    onTimeChange,
+    onPreset,
+  }: Props = $props();
 
   const earliestSession = $derived(sync.stats?.earliest_session ?? null);
 
@@ -38,6 +49,24 @@
   ) {
     const val = e.currentTarget.value;
     if (val) onChange(from, val);
+  }
+
+  let timeDebounce: ReturnType<typeof setTimeout>;
+
+  function handleFromTimeChange(
+    e: Event & { currentTarget: HTMLInputElement },
+  ) {
+    const val = e.currentTarget.value;
+    clearTimeout(timeDebounce);
+    timeDebounce = setTimeout(() => onTimeChange?.(val, toTime), 400);
+  }
+
+  function handleToTimeChange(
+    e: Event & { currentTarget: HTMLInputElement },
+  ) {
+    const val = e.currentTarget.value;
+    clearTimeout(timeDebounce);
+    timeDebounce = setTimeout(() => onTimeChange?.(fromTime, val), 400);
   }
 </script>
 
@@ -66,12 +95,26 @@
       value={from}
       onchange={handleFromChange}
     />
+    <input
+      type="time"
+      class="date-input time-input"
+      value={fromTime}
+      onchange={handleFromTimeChange}
+      oninput={handleFromTimeChange}
+    />
     <span class="date-sep">-</span>
     <input
       type="date"
       class="date-input"
       value={to}
       onchange={handleToChange}
+    />
+    <input
+      type="time"
+      class="date-input time-input"
+      value={toTime}
+      onchange={handleToTimeChange}
+      oninput={handleToTimeChange}
     />
   </div>
 </div>
@@ -129,6 +172,12 @@
   .date-input:focus {
     outline: none;
     border-color: var(--accent-blue);
+  }
+
+  .time-input {
+    width: 56px;
+    padding: 0 2px;
+    font-size: 10px;
   }
 
   .date-sep {

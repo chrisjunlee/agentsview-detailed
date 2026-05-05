@@ -818,6 +818,8 @@ export function updateSettings(
 export interface AnalyticsParams {
   from?: string;
   to?: string;
+  from_time?: string;
+  to_time?: string;
   timezone?: string;
   machine?: string;
   project?: string;

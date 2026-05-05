@@ -157,7 +157,10 @@
     <DateRangeSelector
       from={analytics.from}
       to={analytics.to}
+      fromTime={analytics.fromTime}
+      toTime={analytics.toTime}
       onChange={(from, to) => analytics.setDateRange(from, to)}
+      onTimeChange={(ft, tt) => analytics.setTimeRange(ft, tt)}
       onPreset={(days) => analytics.setRollingWindow(days)}
     />
     <button

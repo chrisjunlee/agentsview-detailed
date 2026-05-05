@@ -104,6 +104,19 @@ func parseUsageFilter(
 		return db.UsageFilter{}, false
 	}
 
+	fromTime := q.Get("from_time")
+	if fromTime != "" && !timeutil.IsValidTime(fromTime) {
+		writeError(w, http.StatusBadRequest,
+			"invalid from_time: use HH:MM")
+		return db.UsageFilter{}, false
+	}
+	toTime := q.Get("to_time")
+	if toTime != "" && !timeutil.IsValidTime(toTime) {
+		writeError(w, http.StatusBadRequest,
+			"invalid to_time: use HH:MM")
+		return db.UsageFilter{}, false
+	}
+
 	minUserMsgs, ok := parseIntParam(w, r, "min_user_messages")
 	if !ok {
 		return db.UsageFilter{}, false
@@ -122,6 +135,8 @@ func parseUsageFilter(
 	return db.UsageFilter{
 		From:             from,
 		To:               to,
+		FromTime:         fromTime,
+		ToTime:           toTime,
 		Agent:            q.Get("agent"),
 		Project:          q.Get("project"),
 		Machine:          q.Get("machine"),

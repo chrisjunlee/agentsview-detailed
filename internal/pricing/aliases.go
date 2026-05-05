@@ -16,12 +16,12 @@ var ModelAliases = map[string]string{
 
 	// Models whose LiteLLM entries have wrong rates — alias
 	// to bare name (which has correct fallback rates).
-	"qwen3.6-plus":  "qwen3.5-plus",
-	"mimo-v2-omni":  "mimo-v2.5",
-	"minimax-m2.5":  "minimax/MiniMax-M2.5",
+	"qwen3.6-plus": "qwen3.5-plus",
+	"mimo-v2-omni": "mimo-v2.5",
+	"minimax-m2.5": "minimax/MiniMax-M2.5",
 
 	// Prefixed variants → bare session names
-	"deepseek/deepseek-v4-flash":   "deepseek-v4-flash",
+	"deepseek/deepseek-v4-flash":    "deepseek-v4-flash",
 	"opencode-go/deepseek-v4-flash": "deepseek-v4-flash",
 	"opencode-go/deepseek-v4-pro":   "deepseek-v4-pro",
 	"opencode-go/kimi-k2.6":         "kimi-k2.6",
@@ -42,16 +42,16 @@ var ModelAliases = map[string]string{
 	"moonshotai/kimi-k2.5": "moonshot/kimi-k2.5",
 
 	// Free-tier model names seen in session data
-	"minimax-m2.5-free":    "minimax/MiniMax-M2.5",
+	"minimax-m2.5-free":     "minimax/MiniMax-M2.5",
 	"nemotron-3-super-free": "nvidia.nemotron-super-3-120b",
 
 	// OpenRouter free-tier models → paid equivalents
-	"qwen/qwen3-coder:free":                       "openrouter/qwen/qwen3-coder",
-	"openai/gpt-oss-120b:free":                    "deepinfra/openai/gpt-oss-120b",
-	"nvidia/nemotron-3-super-120b-a12b:free":      "nvidia.nemotron-super-3-120b",
-	"meta-llama/llama-3.3-70b-instruct:free":      "deepinfra/meta-llama/Llama-3.3-70B-Instruct",
-	"nousresearch/hermes-3-llama-3.1-405b:free":   "deepinfra/NousResearch/Hermes-3-Llama-3.1-405B",
-	"google/gemma-4-31b-it:free":                  "google/gemma-4-31b-it",
+	"qwen/qwen3-coder:free":                     "openrouter/qwen/qwen3-coder",
+	"openai/gpt-oss-120b:free":                  "deepinfra/openai/gpt-oss-120b",
+	"nvidia/nemotron-3-super-120b-a12b:free":    "nvidia.nemotron-super-3-120b",
+	"meta-llama/llama-3.3-70b-instruct:free":    "deepinfra/meta-llama/Llama-3.3-70B-Instruct",
+	"nousresearch/hermes-3-llama-3.1-405b:free": "deepinfra/NousResearch/Hermes-3-Llama-3.1-405B",
+	"google/gemma-4-31b-it:free":                "google/gemma-4-31b-it",
 }
 
 // ResolveModelAlias returns the LiteLLM pricing key for a

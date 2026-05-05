@@ -159,6 +159,8 @@ type Endpoint = "summary" | "topSessions";
 class UsageStore {
   from: string = $state(daysAgo(DEFAULT_WINDOW_DAYS));
   to: string = $state(today());
+  fromTime: string = $state("00:00");
+  toTime: string = $state("00:00");
   isPinned: boolean = $state(false);
   windowDays: number = $state(DEFAULT_WINDOW_DAYS);
 
@@ -203,6 +205,14 @@ class UsageStore {
     const p: UsageParams = {
       from: this.from,
       to: this.to,
+      from_time:
+        this.fromTime && this.fromTime !== "00:00"
+          ? this.fromTime
+          : undefined,
+      to_time:
+        this.toTime && this.toTime !== "00:00"
+          ? this.toTime
+          : undefined,
       timezone: this.timezone,
       project: sessionFilters.project || undefined,
       machine: sessionFilters.machine || undefined,
@@ -244,9 +254,17 @@ class UsageStore {
     this.fetchAll();
   }
 
+  setTimeRange(fromTime: string, toTime: string) {
+    this.fromTime = fromTime;
+    this.toTime = toTime;
+    this.fetchAll();
+  }
+
   setRollingWindow(days: number) {
     this.windowDays = days;
     this.isPinned = false;
+    this.fromTime = "00:00";
+    this.toTime = "00:00";
     this.rollDates();
     this.fetchAll();
   }

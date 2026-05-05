@@ -60,11 +60,19 @@ func analyticsUTCRange(
 	)
 	from := unboundedFrom
 	if f.From != "" {
-		from = f.From + "T00:00:00Z"
+		ft := "00:00:00"
+		if f.FromTime != "" {
+			ft = f.FromTime + ":00"
+		}
+		from = f.From + "T" + ft + "Z"
 	}
 	to := unboundedTo
 	if f.To != "" {
-		to = f.To + "T23:59:59Z"
+		tt := "23:59:59"
+		if f.ToTime != "" {
+			tt = f.ToTime + ":59"
+		}
+		to = f.To + "T" + tt + "Z"
 	}
 	tFrom, err := time.Parse(time.RFC3339, from)
 	if err != nil {
@@ -220,6 +228,34 @@ func inDateRange(date, from, to string) bool {
 		return false
 	}
 	return true
+}
+
+func filterInLocalRange(
+	f db.AnalyticsFilter, ts string, loc *time.Location,
+) (string, bool) {
+	lt, parsed := localTime(ts, loc)
+	if !parsed {
+		date := ""
+		if len(ts) >= 10 {
+			date = ts[:10]
+		}
+		return date, inDateRange(date, f.From, f.To)
+	}
+	date := lt.Format("2006-01-02")
+	if !inDateRange(date, f.From, f.To) {
+		return date, false
+	}
+	if f.FromTime != "" && date == f.From {
+		if lt.Format("15:04") < f.FromTime {
+			return date, false
+		}
+	}
+	if f.ToTime != "" && date == f.To {
+		if lt.Format("15:04") > f.ToTime {
+			return date, false
+		}
+	}
+	return date, true
 }
 
 // medianInt returns the median of a sorted int slice.
@@ -433,8 +469,8 @@ func (s *Store) GetAnalyticsSummary(
 					"scanning summary row: %w", err,
 				)
 		}
-		date := localDate(scanDateCol(ts), loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := filterInLocalRange(f, scanDateCol(ts), loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -598,8 +634,8 @@ func (s *Store) GetAnalyticsActivity(
 				)
 		}
 
-		date := localDate(scanDateCol(tsVal), loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := filterInLocalRange(f, scanDateCol(tsVal), loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[sid] {
@@ -852,8 +888,8 @@ func (s *Store) GetAnalyticsHeatmap(
 					"scanning heatmap row: %w", err,
 				)
 		}
-		date := localDate(scanDateCol(ts), loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := filterInLocalRange(f, scanDateCol(ts), loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -975,8 +1011,8 @@ func (s *Store) GetAnalyticsProjects(
 					"scanning project row: %w", err,
 				)
 		}
-		date := localDate(scanDateCol(ts), loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := filterInLocalRange(f, scanDateCol(ts), loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -1105,8 +1141,8 @@ func (s *Store) GetAnalyticsHourOfWeek(
 					err,
 				)
 		}
-		sessDate := localDate(scanDateCol(sessTS), loc)
-		if !inDateRange(sessDate, f.From, f.To) {
+		_, inRange := filterInLocalRange(f, scanDateCol(sessTS), loc)
+		if !inRange {
 			continue
 		}
 		t, ok := localTime(msgTS, loc)
@@ -1290,8 +1326,8 @@ func (s *Store) GetAnalyticsSessionShape(
 					err,
 				)
 		}
-		date := localDate(scanDateCol(tsVal), loc)
-		if !inDateRange(date, f.From, f.To) {
+		_, inRange := filterInLocalRange(f, scanDateCol(tsVal), loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -1436,8 +1472,8 @@ func (s *Store) GetAnalyticsTools(
 					"scanning tool session: %w", err,
 				)
 		}
-		date := localDate(scanDateCol(ts), loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := filterInLocalRange(f, scanDateCol(ts), loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -1780,8 +1816,8 @@ func (s *Store) GetAnalyticsVelocity(
 					err,
 				)
 		}
-		date := localDate(scanDateCol(ts), loc)
-		if !inDateRange(date, f.From, f.To) {
+		_, inRange := filterInLocalRange(f, scanDateCol(ts), loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -2104,8 +2140,8 @@ func (s *Store) GetAnalyticsTopSessions(
 					"scanning top session: %w", err,
 				)
 		}
-		date := localDate(scanDateCol(ts), loc)
-		if !inDateRange(date, f.From, f.To) {
+		_, inRange := filterInLocalRange(f, scanDateCol(ts), loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -2210,8 +2246,9 @@ func (s *Store) GetAnalyticsSignals(
 				"scanning signals row: %w", err,
 			)
 		}
-		r.Date = localDate(scanDateCol(ts), loc)
-		if !inDateRange(r.Date, f.From, f.To) {
+		rDate, inRange := filterInLocalRange(f, scanDateCol(ts), loc)
+		r.Date = rDate
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[r.ID] {

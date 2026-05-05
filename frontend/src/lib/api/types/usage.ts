@@ -126,6 +126,8 @@ export type TopUsageSessionsResponse = TopSessionEntry[];
 export interface UsageParams {
   from?: string;
   to?: string;
+  from_time?: string;
+  to_time?: string;
   project?: string;
   machine?: string;
   agent?: string;

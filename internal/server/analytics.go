@@ -58,6 +58,19 @@ func parseAnalyticsFilter(
 		return db.AnalyticsFilter{}, false
 	}
 
+	fromTime := q.Get("from_time")
+	if fromTime != "" && !timeutil.IsValidTime(fromTime) {
+		writeError(w, http.StatusBadRequest,
+			"invalid from_time: use HH:MM")
+		return db.AnalyticsFilter{}, false
+	}
+	toTime := q.Get("to_time")
+	if toTime != "" && !timeutil.IsValidTime(toTime) {
+		writeError(w, http.StatusBadRequest,
+			"invalid to_time: use HH:MM")
+		return db.AnalyticsFilter{}, false
+	}
+
 	var dow *int
 	if s := q.Get("dow"); s != "" {
 		v, err := strconv.Atoi(s)
@@ -98,6 +111,8 @@ func parseAnalyticsFilter(
 	return db.AnalyticsFilter{
 		From:             from,
 		To:               to,
+		FromTime:         fromTime,
+		ToTime:           toTime,
 		Machine:          q.Get("machine"),
 		Project:          q.Get("project"),
 		Agent:            q.Get("agent"),

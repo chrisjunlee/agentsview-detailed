@@ -16,6 +16,8 @@ import (
 type UsageFilter struct {
 	From             string // YYYY-MM-DD, inclusive
 	To               string // YYYY-MM-DD, inclusive
+	FromTime         string // HH:MM, optional time bound on From date
+	ToTime           string // HH:MM, optional time bound on To date
 	Agent            string // "" for all; supports comma-separated
 	Project          string // "" for all; supports comma-separated
 	Machine          string // "" for all; supports comma-separated
@@ -29,6 +31,50 @@ type UsageFilter struct {
 	ExcludeAutomated bool   // is_automated = false
 	ActiveSince      string // RFC3339 session recency cutoff
 	Breakdowns       bool   // populate Project/AgentBreakdowns per day
+}
+
+func (f UsageFilter) FromTimestamp() string {
+	ft := "00:00:00"
+	if f.FromTime != "" {
+		ft = f.FromTime + ":00"
+	}
+	return f.From + "T" + ft + "Z"
+}
+
+func (f UsageFilter) ToTimestamp() string {
+	tt := "23:59:59"
+	if f.ToTime != "" {
+		tt = f.ToTime + ":59"
+	}
+	return f.To + "T" + tt + "Z"
+}
+
+func (f UsageFilter) inLocalRange(
+	ts string, loc *time.Location,
+) (string, bool) {
+	lt, parsed := localTime(ts, loc)
+	if !parsed {
+		date := ""
+		if len(ts) >= 10 {
+			date = ts[:10]
+		}
+		return date, inDateRange(date, f.From, f.To)
+	}
+	date := lt.Format("2006-01-02")
+	if !inDateRange(date, f.From, f.To) {
+		return date, false
+	}
+	if f.FromTime != "" && date == f.From {
+		if lt.Format("15:04") < f.FromTime {
+			return date, false
+		}
+	}
+	if f.ToTime != "" && date == f.To {
+		if lt.Format("15:04") > f.ToTime {
+			return date, false
+		}
+	}
+	return date, true
 }
 
 // appendFilterClauses appends WHERE clauses for all include and
@@ -334,12 +380,12 @@ WHERE ` + usageMessageEligibility
 	// Pad by ±14h to cover all timezone offsets — the actual
 	// date filtering happens post-query via localDate.
 	if f.From != "" {
-		padded := paddedUTCBound(f.From+"T00:00:00Z", -14)
+		padded := paddedUTCBound(f.FromTimestamp(), -14)
 		query += " AND COALESCE(m.timestamp, s.started_at) >= ?"
 		args = append(args, padded)
 	}
 	if f.To != "" {
-		padded := paddedUTCBound(f.To+"T23:59:59Z", 14)
+		padded := paddedUTCBound(f.ToTimestamp(), 14)
 		query += " AND COALESCE(m.timestamp, s.started_at) <= ?"
 		args = append(args, padded)
 	}
@@ -411,11 +457,8 @@ WHERE ` + usageMessageEligibility
 				fmt.Errorf("scanning daily usage row: %w", scanErr)
 		}
 
-		date := localDate(ts, loc)
-		if f.From != "" && date < f.From {
-			continue
-		}
-		if f.To != "" && date > f.To {
+		date, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 
@@ -815,12 +858,12 @@ WHERE ` + usageMessageEligibility
 	var args []any
 
 	if f.From != "" {
-		padded := paddedUTCBound(f.From+"T00:00:00Z", -14)
+		padded := paddedUTCBound(f.FromTimestamp(), -14)
 		query += " AND COALESCE(m.timestamp, s.started_at) >= ?"
 		args = append(args, padded)
 	}
 	if f.To != "" {
-		padded := paddedUTCBound(f.To+"T23:59:59Z", 14)
+		padded := paddedUTCBound(f.ToTimestamp(), 14)
 		query += " AND COALESCE(m.timestamp, s.started_at) <= ?"
 		args = append(args, padded)
 	}
@@ -885,11 +928,8 @@ WHERE ` + usageMessageEligibility
 		}
 
 		// Post-query date filter (same as GetDailyUsage).
-		date := localDate(ts, loc)
-		if f.From != "" && date < f.From {
-			continue
-		}
-		if f.To != "" && date > f.To {
+		_, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 
@@ -1003,12 +1043,12 @@ WHERE ` + usageMessageEligibility
 	var args []any
 
 	if f.From != "" {
-		padded := paddedUTCBound(f.From+"T00:00:00Z", -14)
+		padded := paddedUTCBound(f.FromTimestamp(), -14)
 		query += " AND COALESCE(m.timestamp, s.started_at) >= ?"
 		args = append(args, padded)
 	}
 	if f.To != "" {
-		padded := paddedUTCBound(f.To+"T23:59:59Z", 14)
+		padded := paddedUTCBound(f.ToTimestamp(), 14)
 		query += " AND COALESCE(m.timestamp, s.started_at) <= ?"
 		args = append(args, padded)
 	}
@@ -1068,11 +1108,8 @@ WHERE ` + usageMessageEligibility
 		}
 
 		// Post-query date filter (same as GetDailyUsage).
-		date := localDate(ts, loc)
-		if f.From != "" && date < f.From {
-			continue
-		}
-		if f.To != "" && date > f.To {
+		_, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 

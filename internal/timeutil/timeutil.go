@@ -27,6 +27,16 @@ func IsValidDate(s string) bool {
 	return err == nil
 }
 
+// IsValidTime reports whether s is a well-formed HH:MM string
+// with hour 0-23 and minute 0-59.
+func IsValidTime(s string) bool {
+	if len(s) != 5 || s[2] != ':' {
+		return false
+	}
+	_, err := time.Parse("15:04", s)
+	return err == nil
+}
+
 // IsValidTimestamp reports whether s is a well-formed RFC3339 or
 // RFC3339Nano timestamp.
 func IsValidTimestamp(s string) bool {

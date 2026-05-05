@@ -44,6 +44,8 @@ func queryChunked(
 type AnalyticsFilter struct {
 	From             string // ISO date YYYY-MM-DD, inclusive
 	To               string // ISO date YYYY-MM-DD, inclusive
+	FromTime         string // HH:MM, optional time bound on From date
+	ToTime           string // HH:MM, optional time bound on To date
 	Machine          string // optional machine filter
 	Project          string // optional project filter
 	Agent            string // optional agent filter
@@ -81,11 +83,19 @@ func (f AnalyticsFilter) utcRange() (string, string) {
 	)
 	from := unboundedFrom
 	if f.From != "" {
-		from = f.From + "T00:00:00Z"
+		ft := "00:00:00"
+		if f.FromTime != "" {
+			ft = f.FromTime + ":00"
+		}
+		from = f.From + "T" + ft + "Z"
 	}
 	to := unboundedTo
 	if f.To != "" {
-		to = f.To + "T23:59:59Z"
+		tt := "23:59:59"
+		if f.ToTime != "" {
+			tt = f.ToTime + ":59"
+		}
+		to = f.To + "T" + tt + "Z"
 	}
 
 	tFrom, err := time.Parse(time.RFC3339, from)
@@ -367,6 +377,37 @@ func inDateRange(date, from, to string) bool {
 	return true
 }
 
+// inLocalRange converts a UTC timestamp to local time and checks
+// whether it falls within the filter's date+time range. Returns
+// the local date string and whether the timestamp passes.
+func (f AnalyticsFilter) inLocalRange(
+	ts string, loc *time.Location,
+) (string, bool) {
+	lt, parsed := localTime(ts, loc)
+	if !parsed {
+		date := ""
+		if len(ts) >= 10 {
+			date = ts[:10]
+		}
+		return date, inDateRange(date, f.From, f.To)
+	}
+	date := lt.Format("2006-01-02")
+	if !inDateRange(date, f.From, f.To) {
+		return date, false
+	}
+	if f.FromTime != "" && date == f.From {
+		if lt.Format("15:04") < f.FromTime {
+			return date, false
+		}
+	}
+	if f.ToTime != "" && date == f.To {
+		if lt.Format("15:04") > f.ToTime {
+			return date, false
+		}
+	}
+	return date, true
+}
+
 // medianInt returns the median of a sorted int slice of
 // length n. For even n, returns the average of the two
 // middle elements.
@@ -458,8 +499,8 @@ func (db *DB) GetAnalyticsSummary(
 			return AnalyticsSummary{},
 				fmt.Errorf("scanning summary row: %w", err)
 		}
-		date := localDate(ts, loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -651,8 +692,8 @@ func (db *DB) GetAnalyticsActivity(
 				fmt.Errorf("scanning activity row: %w", err)
 		}
 
-		date := localDate(ts, loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[sid] {
@@ -836,8 +877,8 @@ func (db *DB) GetAnalyticsHeatmap(
 			return HeatmapResponse{},
 				fmt.Errorf("scanning heatmap row: %w", err)
 		}
-		date := localDate(ts, loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -1058,8 +1099,8 @@ func (db *DB) GetAnalyticsProjects(
 			return ProjectsAnalyticsResponse{},
 				fmt.Errorf("scanning project row: %w", err)
 		}
-		date := localDate(ts, loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -1183,8 +1224,8 @@ func (db *DB) GetAnalyticsHourOfWeek(
 			return HourOfWeekResponse{},
 				fmt.Errorf("scanning hour-of-week row: %w", err)
 		}
-		sessDate := localDate(sessTS, loc)
-		if !inDateRange(sessDate, f.From, f.To) {
+		_, inRange := f.inLocalRange(sessTS, loc)
+		if !inRange {
 			continue
 		}
 		t, ok := localTime(msgTS, loc)
@@ -1370,8 +1411,8 @@ func (db *DB) GetAnalyticsSessionShape(
 			return SessionShapeResponse{},
 				fmt.Errorf("scanning session shape row: %w", err)
 		}
-		date := localDate(ts, loc)
-		if !inDateRange(date, f.From, f.To) {
+		_, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -1533,8 +1574,8 @@ func (db *DB) GetAnalyticsTools(
 			return ToolsAnalyticsResponse{},
 				fmt.Errorf("scanning tool session: %w", err)
 		}
-		date := localDate(ts, loc)
-		if !inDateRange(date, f.From, f.To) {
+		date, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -2076,8 +2117,8 @@ func (db *DB) GetAnalyticsVelocity(
 			return VelocityResponse{},
 				fmt.Errorf("scanning velocity session: %w", err)
 		}
-		date := localDate(ts, loc)
-		if !inDateRange(date, f.From, f.To) {
+		_, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {
@@ -2372,8 +2413,9 @@ func (db *DB) GetAnalyticsSignals(
 					"scanning signals row: %w", err,
 				)
 		}
-		r.Date = localDate(ts, loc)
-		if !inDateRange(r.Date, f.From, f.To) {
+		rDate, inRange := f.inLocalRange(ts, loc)
+		r.Date = rDate
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[r.ID] {
@@ -2699,12 +2741,12 @@ func AggregateSignals(
 
 // TopSession holds summary info for a ranked session.
 type TopSession struct {
-	ID                string  `json:"id"`
-	Project           string  `json:"project"`
-	FirstMessage      *string `json:"first_message"`
-	MessageCount      int     `json:"message_count"`
-	OutputTokens      int     `json:"output_tokens"`
-	DurationMin       float64 `json:"duration_min"`
+	ID           string  `json:"id"`
+	Project      string  `json:"project"`
+	FirstMessage *string `json:"first_message"`
+	MessageCount int     `json:"message_count"`
+	OutputTokens int     `json:"output_tokens"`
+	DurationMin  float64 `json:"duration_min"`
 	// StartedAt and EndedAt are included so the frontend can
 	// derive a recency-based status tier — the StatusDot in the
 	// Top Sessions column needs the same time window inputs as
@@ -2784,8 +2826,8 @@ func (db *DB) GetAnalyticsTopSessions(
 			return TopSessionsResponse{},
 				fmt.Errorf("scanning top session: %w", err)
 		}
-		date := localDate(ts, loc)
-		if !inDateRange(date, f.From, f.To) {
+		_, inRange := f.inLocalRange(ts, loc)
+		if !inRange {
 			continue
 		}
 		if timeIDs != nil && !timeIDs[id] {

@@ -62,6 +62,8 @@ type Panel =
 class AnalyticsStore {
   from: string = $state(daysAgo(365));
   to: string = $state(today());
+  fromTime: string = $state("00:00");
+  toTime: string = $state("00:00");
   isPinned: boolean = $state(false);
   windowDays: number = $state(365);
   granularity: Granularity = $state("day");
@@ -317,6 +319,10 @@ class AnalyticsStore {
       to: this.to,
       timezone: this.timezone,
     };
+    if (this.fromTime && this.fromTime !== "00:00")
+      p.from_time = this.fromTime;
+    if (this.toTime && this.toTime !== "00:00")
+      p.to_time = this.toTime;
     if (includeProject && this.project) {
       p.project = this.project;
     }
@@ -599,9 +605,17 @@ class AnalyticsStore {
     this.fetchAll();
   }
 
+  setTimeRange(fromTime: string, toTime: string) {
+    this.fromTime = fromTime;
+    this.toTime = toTime;
+    this.fetchAll();
+  }
+
   setRollingWindow(days: number) {
     this.windowDays = days;
     this.isPinned = false;
+    this.fromTime = "00:00";
+    this.toTime = "00:00";
     this.selectedDate = null;
     this.selectedDow = null;
     this.selectedHour = null;

@@ -140,12 +140,12 @@ WHERE ` + pgUsageMessageEligibility
 
 	pb := &paramBuilder{}
 	if f.From != "" {
-		padded := paddedUTCBound(f.From+"T00:00:00Z", -14)
+		padded := paddedUTCBound(f.FromTimestamp(), -14)
 		query += " AND COALESCE(m.timestamp, s.started_at) >= " +
 			pb.add(padded) + "::timestamptz"
 	}
 	if f.To != "" {
-		padded := paddedUTCBound(f.To+"T23:59:59Z", 14)
+		padded := paddedUTCBound(f.ToTimestamp(), 14)
 		query += " AND COALESCE(m.timestamp, s.started_at) <= " +
 			pb.add(padded) + "::timestamptz"
 	}
@@ -569,12 +569,12 @@ WHERE ` + pgUsageMessageEligibility
 
 	pb := &paramBuilder{}
 	if f.From != "" {
-		padded := paddedUTCBound(f.From+"T00:00:00Z", -14)
+		padded := paddedUTCBound(f.FromTimestamp(), -14)
 		query += " AND COALESCE(m.timestamp, s.started_at) >= " +
 			pb.add(padded) + "::timestamptz"
 	}
 	if f.To != "" {
-		padded := paddedUTCBound(f.To+"T23:59:59Z", 14)
+		padded := paddedUTCBound(f.ToTimestamp(), 14)
 		query += " AND COALESCE(m.timestamp, s.started_at) <= " +
 			pb.add(padded) + "::timestamptz"
 	}
@@ -729,12 +729,12 @@ WHERE ` + pgUsageMessageEligibility
 
 	pb := &paramBuilder{}
 	if f.From != "" {
-		padded := paddedUTCBound(f.From+"T00:00:00Z", -14)
+		padded := paddedUTCBound(f.FromTimestamp(), -14)
 		query += " AND COALESCE(m.timestamp, s.started_at) >= " +
 			pb.add(padded) + "::timestamptz"
 	}
 	if f.To != "" {
-		padded := paddedUTCBound(f.To+"T23:59:59Z", 14)
+		padded := paddedUTCBound(f.ToTimestamp(), 14)
 		query += " AND COALESCE(m.timestamp, s.started_at) <= " +
 			pb.add(padded) + "::timestamptz"
 	}
