@@ -126,29 +126,22 @@
       let changed = false;
       let sessionChanged = false;
 
-      // Sync pin state from URL: dated URL pins, undated URL unpins.
-      // Runs before the !hasFilterKeys early return so a fully bare URL
-      // (no exclude_* either) still flips the pin off.
+      // Bare navigation (no filter keys): preserve existing store state.
+      if (!hasFilterKeys) {
+        urlInitRan = true;
+        return;
+      }
+
       if (usage.isPinned !== hasDateParam) {
         usage.isPinned = hasDateParam;
         changed = true;
       }
 
-      // Apply rolling window from URL when present and the URL is
-      // not pinning a specific date range.
       if (!hasDateParam && parsedWindowDays !== null) {
         if (usage.windowDays !== parsedWindowDays) {
           usage.windowDays = parsedWindowDays;
           changed = true;
         }
-      }
-
-      if (!hasFilterKeys) {
-        if (changed && urlInitRan) {
-          usage.fetchAll();
-        }
-        urlInitRan = true;
-        return;
       }
       if (hasSessionFilterKeys) {
         const nextSessionParams = filtersToParams(
