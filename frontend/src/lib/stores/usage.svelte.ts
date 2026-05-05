@@ -87,7 +87,29 @@ function today(): string {
   return localDateStr(new Date());
 }
 
-const DEFAULT_WINDOW_DAYS = 30;
+const DEFAULT_WINDOW_DAYS = 1;
+const DEFAULT_START_TIME = "12:00";
+const DEFAULT_END_TIME = "12:00";
+
+function defaultNoonWindow(): { from: string; to: string } {
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(12, 0, 0, 0);
+
+  const end = new Date(start);
+  if (now.getTime() < start.getTime()) {
+    start.setDate(start.getDate() - 1);
+  } else {
+    end.setDate(end.getDate() + 1);
+  }
+
+  return {
+    from: localDateStr(start),
+    to: localDateStr(end),
+  };
+}
+
+const INITIAL_NOON_WINDOW = defaultNoonWindow();
 
 // 100 years is well beyond any realistic session history and stays
 // inside Date#setDate's safe range, so daysAgo(MAX_WINDOW_DAYS) always
@@ -157,10 +179,10 @@ function joinCsvParts(...parts: string[]): string {
 type Endpoint = "summary" | "topSessions";
 
 class UsageStore {
-  from: string = $state(daysAgo(DEFAULT_WINDOW_DAYS));
-  to: string = $state(today());
-  fromTime: string = $state("00:00");
-  toTime: string = $state("00:00");
+  from: string = $state(INITIAL_NOON_WINDOW.from);
+  to: string = $state(INITIAL_NOON_WINDOW.to);
+  fromTime: string = $state(DEFAULT_START_TIME);
+  toTime: string = $state(DEFAULT_END_TIME);
   isPinned: boolean = $state(false);
   windowDays: number = $state(DEFAULT_WINDOW_DAYS);
 
@@ -394,6 +416,12 @@ class UsageStore {
 
   private rollDates(): void {
     if (this.isPinned) return;
+    if (this.windowDays === DEFAULT_WINDOW_DAYS) {
+      const range = defaultNoonWindow();
+      this.from = range.from;
+      this.to = range.to;
+      return;
+    }
     this.from = daysAgo(this.windowDays);
     this.to = today();
   }

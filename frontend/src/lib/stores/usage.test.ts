@@ -218,32 +218,46 @@ describe("UsageStore rolling default date range", () => {
     localStorage.removeItem("usage-filters");
     vi.clearAllMocks();
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    vi.setSystemTime(new Date("2026-04-25T11:59:00"));
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("constructor produces isPinned=false and windowDays=30 with rolling defaults", async () => {
+  it("constructor produces a rolling previous-noon to current-noon default before noon", async () => {
     const { usage } = await loadStore();
     expect(usage.isPinned).toBe(false);
-    expect(usage.windowDays).toBe(30);
-    expect(usage.from).toBe("2026-03-26");
+    expect(usage.windowDays).toBe(1);
+    expect(usage.from).toBe("2026-04-24");
     expect(usage.to).toBe("2026-04-25");
+    expect(usage.fromTime).toBe("12:00");
+    expect(usage.toTime).toBe("12:00");
+  });
+
+  it("constructor produces a rolling current-noon to next-noon default after noon", async () => {
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+
+    const { usage } = await loadStore();
+    expect(usage.isPinned).toBe(false);
+    expect(usage.windowDays).toBe(1);
+    expect(usage.from).toBe("2026-04-25");
+    expect(usage.to).toBe("2026-04-26");
+    expect(usage.fromTime).toBe("12:00");
+    expect(usage.toTime).toBe("12:00");
   });
 
   it("fetchAll re-derives from/to against the current clock while unpinned", async () => {
     const { usage } = await loadStore();
 
-    expect(usage.from).toBe("2026-03-26");
+    expect(usage.from).toBe("2026-04-24");
     expect(usage.to).toBe("2026-04-25");
 
     vi.setSystemTime(new Date("2026-04-26T12:00:00"));
     await usage.fetchAll();
 
-    expect(usage.from).toBe("2026-03-27");
-    expect(usage.to).toBe("2026-04-26");
+    expect(usage.from).toBe("2026-04-26");
+    expect(usage.to).toBe("2026-04-27");
   });
 
   it("setDateRange pins and subsequent fetchAll does not roll", async () => {
@@ -294,7 +308,7 @@ describe("buildUsageUrlParams", () => {
       from: "2026-03-26",
       to: "2026-04-25",
       isPinned: false,
-      windowDays: 30,
+      windowDays: 1,
       excludedProjects: "p1",
       excludedAgents: "a1",
       excludedModels: "m1",
@@ -330,7 +344,7 @@ describe("buildUsageUrlParams", () => {
       from: "",
       to: "",
       isPinned: false,
-      windowDays: 30,
+      windowDays: 1,
       excludedProjects: "",
       excludedAgents: "",
       excludedModels: "",
