@@ -138,8 +138,23 @@
       }
 
       if (!hasDateParam && parsedWindowDays !== null) {
-        if (usage.windowDays !== parsedWindowDays) {
-          usage.windowDays = parsedWindowDays;
+        const before = {
+          from: usage.from,
+          to: usage.to,
+          fromTime: usage.fromTime,
+          toTime: usage.toTime,
+          isPinned: usage.isPinned,
+          windowDays: usage.windowDays,
+        };
+        usage.applyRollingWindow(parsedWindowDays);
+        if (
+          usage.from !== before.from ||
+          usage.to !== before.to ||
+          usage.fromTime !== before.fromTime ||
+          usage.toTime !== before.toTime ||
+          usage.isPinned !== before.isPinned ||
+          usage.windowDays !== before.windowDays
+        ) {
           changed = true;
         }
       }

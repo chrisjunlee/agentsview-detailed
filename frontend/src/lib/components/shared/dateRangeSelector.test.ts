@@ -1,12 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  DATE_RANGE_PRESETS,
   allFromDate,
   isPresetActive,
   presetRange,
 } from "./dateRangeSelector.js";
 
 describe("date range selector presets", () => {
+  it("lists one day before seven days", () => {
+    expect(DATE_RANGE_PRESETS.slice(0, 2)).toEqual([
+      { label: "1d", days: 1 },
+      { label: "7d", days: 7 },
+    ]);
+  });
+
   it("builds last-n-days ranges ending today", () => {
     vi.setSystemTime(new Date("2026-04-25T12:00:00Z"));
 

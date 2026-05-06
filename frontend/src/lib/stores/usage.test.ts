@@ -225,7 +225,7 @@ describe("UsageStore rolling default date range", () => {
     vi.useRealTimers();
   });
 
-  it("constructor produces a rolling previous-noon to current-noon default before noon", async () => {
+  it("constructor produces a rolling 24-hour default ceiled to the next hour", async () => {
     const { usage } = await loadStore();
     expect(usage.isPinned).toBe(false);
     expect(usage.windowDays).toBe(1);
@@ -235,16 +235,26 @@ describe("UsageStore rolling default date range", () => {
     expect(usage.toTime).toBe("12:00");
   });
 
-  it("constructor produces a rolling current-noon to next-noon default after noon", async () => {
+  it("constructor keeps exact-hour boundaries unchanged", async () => {
     vi.setSystemTime(new Date("2026-04-25T12:00:00"));
 
     const { usage } = await loadStore();
     expect(usage.isPinned).toBe(false);
     expect(usage.windowDays).toBe(1);
-    expect(usage.from).toBe("2026-04-25");
-    expect(usage.to).toBe("2026-04-26");
+    expect(usage.from).toBe("2026-04-24");
+    expect(usage.to).toBe("2026-04-25");
     expect(usage.fromTime).toBe("12:00");
     expect(usage.toTime).toBe("12:00");
+  });
+
+  it("constructor rolls partial hours up to the next hour", async () => {
+    vi.setSystemTime(new Date("2026-04-25T12:01:00"));
+
+    const { usage } = await loadStore();
+    expect(usage.from).toBe("2026-04-24");
+    expect(usage.to).toBe("2026-04-25");
+    expect(usage.fromTime).toBe("13:00");
+    expect(usage.toTime).toBe("13:00");
   });
 
   it("fetchAll re-derives from/to against the current clock while unpinned", async () => {
@@ -256,8 +266,10 @@ describe("UsageStore rolling default date range", () => {
     vi.setSystemTime(new Date("2026-04-26T12:00:00"));
     await usage.fetchAll();
 
-    expect(usage.from).toBe("2026-04-26");
-    expect(usage.to).toBe("2026-04-27");
+    expect(usage.from).toBe("2026-04-25");
+    expect(usage.to).toBe("2026-04-26");
+    expect(usage.fromTime).toBe("12:00");
+    expect(usage.toTime).toBe("12:00");
   });
 
   it("setDateRange pins and subsequent fetchAll does not roll", async () => {
@@ -286,6 +298,8 @@ describe("UsageStore rolling default date range", () => {
     expect(usage.windowDays).toBe(7);
     expect(usage.from).toBe("2026-04-18");
     expect(usage.to).toBe("2026-04-25");
+    expect(usage.fromTime).toBe("00:00");
+    expect(usage.toTime).toBe("00:00");
   });
 
   it("after setRollingWindow, fetchAll keeps rolling", async () => {
@@ -298,6 +312,38 @@ describe("UsageStore rolling default date range", () => {
 
     expect(usage.from).toBe("2026-04-19");
     expect(usage.to).toBe("2026-04-26");
+  });
+
+  it("setRollingWindow(1) restores the ceiled 24-hour range", async () => {
+    const { usage } = await loadStore();
+    usage.setRollingWindow(7);
+    vi.setSystemTime(new Date("2026-04-25T23:15:00"));
+
+    usage.setRollingWindow(1);
+
+    expect(usage.isPinned).toBe(false);
+    expect(usage.windowDays).toBe(1);
+    expect(usage.from).toBe("2026-04-25");
+    expect(usage.to).toBe("2026-04-26");
+    expect(usage.fromTime).toBe("00:00");
+    expect(usage.toTime).toBe("00:00");
+  });
+
+  it("fetchAll sends midnight time bounds for the rolling one-day window", async () => {
+    const { usage } = await loadStore();
+    const api = await import("../api/client.js");
+    vi.setSystemTime(new Date("2026-04-25T23:15:00"));
+
+    await usage.fetchAll();
+
+    expect(api.getUsageSummary).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        from: "2026-04-25",
+        to: "2026-04-26",
+        from_time: "00:00",
+        to_time: "00:00",
+      }),
+    );
   });
 });
 
@@ -428,6 +474,7 @@ describe("mergeUsageAndSessionUrlParams", () => {
 describe("parseWindowDays", () => {
   it("returns the parsed integer for valid positive integers", async () => {
     const { parseWindowDays } = await loadStore();
+    expect(parseWindowDays("1")).toBe(1);
     expect(parseWindowDays("7")).toBe(7);
     expect(parseWindowDays("365")).toBe(365);
   });

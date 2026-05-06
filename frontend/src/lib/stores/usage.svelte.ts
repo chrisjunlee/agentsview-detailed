@@ -77,6 +77,12 @@ function localDateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function localTimeStr(d: Date): string {
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
 function daysAgo(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -88,28 +94,40 @@ function today(): string {
 }
 
 const DEFAULT_WINDOW_DAYS = 1;
-const DEFAULT_START_TIME = "12:00";
-const DEFAULT_END_TIME = "12:00";
+const DEFAULT_START_TIME = "00:00";
+const DEFAULT_END_TIME = "00:00";
 
-function defaultNoonWindow(): { from: string; to: string } {
-  const now = new Date();
-  const start = new Date(now);
-  start.setHours(12, 0, 0, 0);
-
-  const end = new Date(start);
-  if (now.getTime() < start.getTime()) {
-    start.setDate(start.getDate() - 1);
-  } else {
-    end.setDate(end.getDate() + 1);
+function ceilToHour(d: Date): Date {
+  const out = new Date(d);
+  if (
+    out.getMinutes() !== 0 ||
+    out.getSeconds() !== 0 ||
+    out.getMilliseconds() !== 0
+  ) {
+    out.setHours(out.getHours() + 1);
   }
+  out.setMinutes(0, 0, 0);
+  return out;
+}
 
+function rollingOneDayWindow(): {
+  from: string;
+  to: string;
+  fromTime: string;
+  toTime: string;
+} {
+  const now = new Date();
+  const start = ceilToHour(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  const end = ceilToHour(now);
   return {
     from: localDateStr(start),
     to: localDateStr(end),
+    fromTime: localTimeStr(start),
+    toTime: localTimeStr(end),
   };
 }
 
-const INITIAL_NOON_WINDOW = defaultNoonWindow();
+const INITIAL_ONE_DAY_WINDOW = rollingOneDayWindow();
 
 // 100 years is well beyond any realistic session history and stays
 // inside Date#setDate's safe range, so daysAgo(MAX_WINDOW_DAYS) always
@@ -179,10 +197,10 @@ function joinCsvParts(...parts: string[]): string {
 type Endpoint = "summary" | "topSessions";
 
 class UsageStore {
-  from: string = $state(INITIAL_NOON_WINDOW.from);
-  to: string = $state(INITIAL_NOON_WINDOW.to);
-  fromTime: string = $state(DEFAULT_START_TIME);
-  toTime: string = $state(DEFAULT_END_TIME);
+  from: string = $state(INITIAL_ONE_DAY_WINDOW.from);
+  to: string = $state(INITIAL_ONE_DAY_WINDOW.to);
+  fromTime: string = $state(INITIAL_ONE_DAY_WINDOW.fromTime);
+  toTime: string = $state(INITIAL_ONE_DAY_WINDOW.toTime);
   isPinned: boolean = $state(false);
   windowDays: number = $state(DEFAULT_WINDOW_DAYS);
 
@@ -224,15 +242,19 @@ class UsageStore {
 
   private baseParams(): UsageParams {
     const sessionFilters = sessions.filters;
+    const includeRollingTimeBounds =
+      !this.isPinned && this.windowDays === DEFAULT_WINDOW_DAYS;
     const p: UsageParams = {
       from: this.from,
       to: this.to,
       from_time:
-        this.fromTime && this.fromTime !== "00:00"
+        this.fromTime &&
+        (includeRollingTimeBounds || this.fromTime !== "00:00")
           ? this.fromTime
           : undefined,
       to_time:
-        this.toTime && this.toTime !== "00:00"
+        this.toTime &&
+        (includeRollingTimeBounds || this.toTime !== "00:00")
           ? this.toTime
           : undefined,
       timezone: this.timezone,
@@ -282,12 +304,16 @@ class UsageStore {
     this.fetchAll();
   }
 
-  setRollingWindow(days: number) {
+  applyRollingWindow(days: number) {
     this.windowDays = days;
     this.isPinned = false;
-    this.fromTime = "00:00";
-    this.toTime = "00:00";
+    this.fromTime = DEFAULT_START_TIME;
+    this.toTime = DEFAULT_END_TIME;
     this.rollDates();
+  }
+
+  setRollingWindow(days: number) {
+    this.applyRollingWindow(days);
     this.fetchAll();
   }
 
@@ -417,9 +443,11 @@ class UsageStore {
   private rollDates(): void {
     if (this.isPinned) return;
     if (this.windowDays === DEFAULT_WINDOW_DAYS) {
-      const range = defaultNoonWindow();
+      const range = rollingOneDayWindow();
       this.from = range.from;
       this.to = range.to;
+      this.fromTime = range.fromTime;
+      this.toTime = range.toTime;
       return;
     }
     this.from = daysAgo(this.windowDays);
