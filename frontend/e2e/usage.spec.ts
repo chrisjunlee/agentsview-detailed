@@ -158,6 +158,16 @@ test.describe("Usage page", () => {
     await expect(usageBtn).toHaveClass(/active/);
   });
 
+  test("preserves explicit one-day window URL", async ({
+    page,
+  }) => {
+    await page.goto("/usage?window_days=1");
+    await expect(
+      page.locator(".usage-page"),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/usage\?window_days=1$/);
+  });
+
   test("URL updates when filter changes", async ({ page }) => {
     // Wait for data.
     await expect(

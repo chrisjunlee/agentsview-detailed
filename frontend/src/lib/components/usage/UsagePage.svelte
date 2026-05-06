@@ -2,6 +2,7 @@
   import { onMount, onDestroy, tick, untrack } from "svelte";
   import {
     usage,
+    USAGE_DEFAULT_WINDOW_DAYS,
     buildUsageUrlParams,
     mergeUsageAndSessionUrlParams,
     parseWindowDays,
@@ -107,6 +108,7 @@
   let urlInitRan = $state(false);
   let urlWritebackReady = $state(false);
   let initialFetchDone = $state(false);
+  let preserveDefaultWindowDays = $state(false);
   $effect(() => {
     const route = router.route;
     const params = router.params;
@@ -128,6 +130,7 @@
 
       // Bare navigation (no filter keys): preserve existing store state.
       if (!hasFilterKeys) {
+        preserveDefaultWindowDays = false;
         urlInitRan = true;
         return;
       }
@@ -136,8 +139,13 @@
         usage.isPinned = hasDateParam;
         changed = true;
       }
+      if (hasDateParam) {
+        preserveDefaultWindowDays = false;
+      }
 
       if (!hasDateParam && parsedWindowDays !== null) {
+        preserveDefaultWindowDays =
+          parsedWindowDays === USAGE_DEFAULT_WINDOW_DAYS;
         const before = {
           from: usage.from,
           to: usage.to,
@@ -174,6 +182,7 @@
         }
       }
       if (params["from"] && params["from"] !== usage.from) {
+        preserveDefaultWindowDays = false;
         usage.from = params["from"];
         changed = true;
       }
@@ -213,6 +222,7 @@
       to: usage.to,
       isPinned: usage.isPinned,
       windowDays: usage.windowDays,
+      preserveDefaultWindowDays,
       excludedProjects: usage.excludedProjects,
       excludedAgents: usage.excludedAgents,
       excludedModels: usage.excludedModels,
@@ -288,7 +298,11 @@
         toTime={usage.toTime}
         onChange={(from, to) => usage.setDateRange(from, to)}
         onTimeChange={(ft, tt) => usage.setTimeRange(ft, tt)}
-        onPreset={(days) => usage.setRollingWindow(days)}
+        onPreset={(days) => {
+          preserveDefaultWindowDays =
+            days === USAGE_DEFAULT_WINDOW_DAYS;
+          usage.setRollingWindow(days);
+        }}
       />
 
       <FilterDropdown

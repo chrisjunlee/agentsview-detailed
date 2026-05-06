@@ -533,6 +533,7 @@ export interface UsageUrlState {
   to: string;
   isPinned: boolean;
   windowDays: number;
+  preserveDefaultWindowDays?: boolean;
   excludedProjects: string;
   excludedAgents: string;
   excludedModels: string;
@@ -564,7 +565,8 @@ export function buildUsageUrlParams(
     if (state.to) params["to"] = state.to;
   } else if (
     state.windowDays > 0 &&
-    state.windowDays !== DEFAULT_WINDOW_DAYS
+    (state.windowDays !== DEFAULT_WINDOW_DAYS ||
+      state.preserveDefaultWindowDays)
   ) {
     params["window_days"] = String(state.windowDays);
   }

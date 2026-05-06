@@ -399,6 +399,22 @@ describe("buildUsageUrlParams", () => {
     expect(params).toEqual({});
   });
 
+  it("can preserve an explicit default window_days param", async () => {
+    const { buildUsageUrlParams } = await loadStore();
+    const params = buildUsageUrlParams({
+      from: "2026-04-25",
+      to: "2026-04-26",
+      isPinned: false,
+      windowDays: 1,
+      preserveDefaultWindowDays: true,
+      excludedProjects: "",
+      excludedAgents: "",
+      excludedModels: "",
+      selectedModels: "",
+    });
+    expect(params).toEqual({ window_days: "1" });
+  });
+
   it("omits empty from/to even when pinned", async () => {
     const { buildUsageUrlParams } = await loadStore();
     const params = buildUsageUrlParams({
