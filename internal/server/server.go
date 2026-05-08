@@ -51,6 +51,8 @@ type Server struct {
 	generateStreamFunc insight.GenerateStreamFunc
 	spaFS              fs.FS
 	spaHandler         http.Handler
+	storyRenderer      storyRenderer
+	storyRenderSem     chan struct{}
 
 	// handlerDelay is injected before each timeout-wrapped
 	// handler, used only by tests to guarantee handlers
@@ -100,6 +102,8 @@ func New(
 		generateStreamFunc: insight.GenerateStream,
 		spaFS:              dist,
 		spaHandler:         http.FileServerFS(dist),
+		storyRenderer:      chromedpStoryRenderer{},
+		storyRenderSem:     make(chan struct{}, 1),
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -243,6 +247,8 @@ func (s *Server) routes() {
 		s.withTimeout(s.handleUsageSummary))
 	s.mux.Handle("GET /api/v1/usage/top-sessions",
 		s.withTimeout(s.handleUsageTopSessions))
+
+	s.mux.Handle("GET /api/v1/story", s.withTimeout(s.handleStory))
 
 	s.mux.Handle("GET /api/v1/insights", s.withTimeout(s.handleListInsights))
 	s.mux.Handle("GET /api/v1/insights/{id}", s.withTimeout(s.handleGetInsight))
