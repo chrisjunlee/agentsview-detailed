@@ -31,6 +31,17 @@
   let mounted = false;
   const storyMode = $derived(router.params["story"] === "1");
 
+  $effect(() => {
+    const active = storyMode;
+    untrack(() => {
+      if (!active) return;
+      usage.toggles.timeSeries.groupBy = "model";
+      usage.toggles.timeSeries.view = "stacked-area";
+      usage.toggles.attribution.groupBy = "model";
+      usage.toggles.attribution.view = "list";
+    });
+  });
+
   const projectItems = $derived(
     sessions.projects.map((p) => ({
       name: p.name,

@@ -249,6 +249,7 @@ func (s *Server) routes() {
 		s.withTimeout(s.handleUsageTopSessions))
 
 	s.mux.Handle("GET /api/v1/story", s.withTimeout(s.handleStory))
+	s.mux.Handle("GET /story", s.withTimeout(s.handleStoryPage))
 
 	s.mux.Handle("GET /api/v1/insights", s.withTimeout(s.handleListInsights))
 	s.mux.Handle("GET /api/v1/insights/{id}", s.withTimeout(s.handleGetInsight))
@@ -468,10 +469,17 @@ func (s *Server) Handler() http.Handler {
 // intersection narrows to the actual runtime port.
 func cspMiddleware(host string, port int, publicOrigins []string, bindAllIPs map[string]bool, basePath string, next http.Handler) http.Handler {
 	policy := buildCSPPolicy(host, port, publicOrigins, bindAllIPs, basePath)
+	storyFramePolicy := buildCSPPolicyWithFrameAncestors(
+		host, port, publicOrigins, bindAllIPs, basePath, "'self'",
+	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
-			w.Header().Set("Content-Security-Policy", policy)
-			w.Header().Set("X-Frame-Options", "DENY")
+			if r.URL.Query().Get("story") == "1" {
+				w.Header().Set("Content-Security-Policy", storyFramePolicy)
+			} else {
+				w.Header().Set("Content-Security-Policy", policy)
+				w.Header().Set("X-Frame-Options", "DENY")
+			}
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -488,6 +496,19 @@ func cspMiddleware(host string, port int, publicOrigins []string, bindAllIPs map
 // tauri://localhost. Public origins and LAN IPs are restricted
 // to connect-src only to limit the script execution surface.
 func buildCSPPolicy(host string, port int, publicOrigins []string, bindAllIPs map[string]bool, basePath string) string {
+	return buildCSPPolicyWithFrameAncestors(
+		host, port, publicOrigins, bindAllIPs, basePath, "'none'",
+	)
+}
+
+func buildCSPPolicyWithFrameAncestors(
+	host string,
+	port int,
+	publicOrigins []string,
+	bindAllIPs map[string]bool,
+	basePath string,
+	frameAncestors string,
+) string {
 	// serverOrigin is the pinned http origin for the configured
 	// host:port, used in all directives so resources load
 	// correctly regardless of how the webview resolves 'self'.
@@ -564,8 +585,8 @@ func buildCSPPolicy(host string, port int, publicOrigins []string, bindAllIPs ma
 			"font-src %[1]s data: https://fonts.gstatic.com; "+
 			"object-src 'none'; "+
 			"base-uri %[3]s; "+
-			"frame-ancestors 'none'",
-		resourceSrc, connectSrc, baseURI,
+			"frame-ancestors %[4]s",
+		resourceSrc, connectSrc, baseURI, frameAncestors,
 	)
 }
 

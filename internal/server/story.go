@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"net"
 	"net/http"
 	"net/url"
@@ -90,6 +91,70 @@ func (s *Server) handleStory(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(png)
 }
 
+func (s *Server) handleStoryPage(w http.ResponseWriter, r *http.Request) {
+	appPath, err := parseStoryAppPath(r.URL.Query().Get("path"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	targetPath := s.storyBrowserTargetPath(appPath)
+	pageHTML := fmt.Sprintf(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=%d, initial-scale=1">
+  <title>agentsview story</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: %dpx;
+      min-height: %dpx;
+      overflow: hidden;
+      background: #f3f4f6;
+    }
+
+    .story-shell {
+      width: %dpx;
+      height: %dpx;
+      overflow: hidden;
+      background: #f3f4f6;
+    }
+
+    .story-frame {
+      display: block;
+      width: %dpx;
+      height: %dpx;
+      border: 0;
+      transform: scale(%.4g);
+      transform-origin: top left;
+    }
+  </style>
+</head>
+<body>
+  <main class="story-shell">
+    <iframe class="story-frame" src="%s" title="agentsview story"></iframe>
+  </main>
+</body>
+</html>
+`,
+		storyOutputWidth,
+		storyOutputWidth,
+		storyOutputHeight,
+		storyOutputWidth,
+		storyOutputHeight,
+		storyViewportWidth,
+		storyViewportHeight,
+		storyDeviceScaleFactor,
+		html.EscapeString(targetPath),
+	)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(pageHTML))
+}
+
 func (s *Server) acquireStoryRenderSlot(ctx context.Context) error {
 	if s.storyRenderSem == nil {
 		s.storyRenderSem = make(chan struct{}, 1)
@@ -151,6 +216,16 @@ func parseStoryAppPath(raw string) (*url.URL, error) {
 func (s *Server) storyTargetURL(appPath *url.URL) string {
 	u := s.storyBaseURL()
 	u.Path = s.basePath + appPath.Path
+	q := appPath.Query()
+	q.Set("story", "1")
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+func (s *Server) storyBrowserTargetPath(appPath *url.URL) string {
+	u := &url.URL{
+		Path: s.basePath + appPath.Path,
+	}
 	q := appPath.Query()
 	q.Set("story", "1")
 	u.RawQuery = q.Encode()

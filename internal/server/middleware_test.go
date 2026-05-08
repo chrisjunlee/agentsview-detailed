@@ -310,6 +310,31 @@ func TestCSPMiddlewareSetsHeaderOnNonAPIRoutes(t *testing.T) {
 	}
 }
 
+func TestCSPMiddlewareAllowsSameOriginStoryFrame(t *testing.T) {
+	t.Parallel()
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := cspMiddleware(
+		"127.0.0.1", 8081, nil, nil, "", inner,
+	)
+
+	req := httptest.NewRequest(
+		http.MethodGet, "/usage?story=1", nil,
+	)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	csp := w.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "frame-ancestors 'self'") {
+		t.Fatalf("CSP = %q, want story frame-ancestors self", csp)
+	}
+	if xfo := w.Header().Get("X-Frame-Options"); xfo != "" {
+		t.Fatalf("X-Frame-Options = %q, want empty for story frame", xfo)
+	}
+}
+
 func TestCORSMiddlewareMergesVaryHeader(t *testing.T) {
 	t.Parallel()
 

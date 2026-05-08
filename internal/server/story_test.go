@@ -172,6 +172,65 @@ func TestHandleStoryRendersPNG(t *testing.T) {
 	}
 }
 
+func TestHandleStoryPageRendersBrowserWrapper(t *testing.T) {
+	t.Parallel()
+
+	s := testServer(t, time.Second, WithBasePath("/viewer"))
+
+	nestedPath := "/usage?from=2026-05-08&to=2026-05-08"
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/viewer/story?path="+url.QueryEscape(nestedPath),
+		nil,
+	)
+	req.Host = net.JoinHostPort("127.0.0.1", "0")
+	req.RemoteAddr = "127.0.0.1:1234"
+	w := httptest.NewRecorder()
+
+	s.Handler().ServeHTTP(w, req)
+
+	assertRecorderStatus(t, w, http.StatusOK)
+	assertContentType(t, w, "text/html; charset=utf-8")
+	body := w.Body.String()
+	for _, want := range []string{
+		`width: 1080px;`,
+		`height: 1920px;`,
+		`width: 540px;`,
+		`height: 960px;`,
+		`transform: scale(2);`,
+		`src="/viewer/usage?from=2026-05-08&amp;story=1&amp;to=2026-05-08"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("story page missing %q in body:\n%s", want, body)
+		}
+	}
+	if got := w.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", got)
+	}
+}
+
+func TestHandleStoryPageRejectsInvalidPath(t *testing.T) {
+	t.Parallel()
+
+	s := testServer(t, time.Second)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/story?path="+url.QueryEscape("/api/v1/stats"),
+		nil,
+	)
+	req.Host = net.JoinHostPort("127.0.0.1", "0")
+	req.RemoteAddr = "127.0.0.1:1234"
+	w := httptest.NewRecorder()
+
+	s.Handler().ServeHTTP(w, req)
+
+	assertRecorderStatus(t, w, http.StatusBadRequest)
+	if !strings.Contains(w.Body.String(), "app page") {
+		t.Fatalf("body = %q, want app page error", w.Body.String())
+	}
+}
+
 func TestHandleStoryRejectsInvalidPath(t *testing.T) {
 	t.Parallel()
 
