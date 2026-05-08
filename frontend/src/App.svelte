@@ -37,6 +37,7 @@
   import { shouldAutoSwitchTranscriptModeToNormal } from "./lib/utils/transcript-mode.js";
 
   let globalAuthToken: string = $state("");
+  const storyMode = $derived(router.params["story"] === "1");
 
   function handleGlobalAuth() {
     const token = globalAuthToken.trim();
@@ -397,30 +398,32 @@
   </div>
 {:else}
 
-<AppHeader />
+{#if !storyMode}
+  <AppHeader />
+{/if}
 
 {#if router.route === "usage"}
-  <div class="page-scroll">
+  <div class="page-scroll" class:story-page-scroll={storyMode}>
     <UsagePage />
   </div>
 {:else if router.route === "trends"}
-  <div class="page-scroll">
+  <div class="page-scroll" class:story-page-scroll={storyMode}>
     <TrendsPage />
   </div>
 {:else if router.route === "insights"}
-  <div class="page-scroll">
+  <div class="page-scroll" class:story-page-scroll={storyMode}>
     <InsightsPage />
   </div>
 {:else if router.route === "pinned"}
-  <div class="page-scroll">
+  <div class="page-scroll" class:story-page-scroll={storyMode}>
     <PinnedPage />
   </div>
 {:else if router.route === "trash"}
-  <div class="page-scroll">
+  <div class="page-scroll" class:story-page-scroll={storyMode}>
     <TrashPage />
   </div>
 {:else if router.route === "settings"}
-  <div class="page-scroll">
+  <div class="page-scroll" class:story-page-scroll={storyMode}>
     <SettingsPage />
   </div>
 {:else}
@@ -514,6 +517,9 @@
     overflow-y: auto;
   }
 
+  .story-page-scroll {
+    background: var(--bg-default);
+  }
 
   .undo-toast {
     position: fixed;

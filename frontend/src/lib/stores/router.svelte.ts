@@ -64,7 +64,7 @@ export function parsePath(): {
 }
 
 /** Params that are not part of routing but must survive navigations. */
-const STICKY_PARAMS = new Set(["desktop"]);
+const STICKY_PARAMS = new Set(["desktop", "story"]);
 
 export class RouterStore {
   route: Route = $state("sessions");

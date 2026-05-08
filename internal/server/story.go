@@ -20,13 +20,18 @@ import (
 )
 
 const (
-	storyViewportWidth  int64 = 1080
-	storyViewportHeight int64 = 1920
-	storyRenderTimeout        = 15 * time.Second
-	storyNetworkIdle          = 500 * time.Millisecond
-	storyNetworkWait          = 10 * time.Second
-	storySettleDelay          = 300 * time.Millisecond
-	storyAuthTokenKey         = "agentsview-auth-token"
+	storyOutputWidth       int64   = 1080
+	storyOutputHeight      int64   = 1920
+	storyViewportWidth     int64   = storyOutputWidth / 2
+	storyViewportHeight    int64   = storyOutputHeight / 2
+	storyDeviceScaleFactor float64 = 2
+	storyRenderTimeout             = 15 * time.Second
+	storyNetworkIdle               = 500 * time.Millisecond
+	storyNetworkWait               = 10 * time.Second
+	storySettleDelay               = 300 * time.Millisecond
+	storyAuthTokenKey              = "agentsview-auth-token"
+	storyUsageTogglesKey           = "usage-toggles"
+	storyUsageTogglesValue         = `{"timeSeries":{"groupBy":"model","view":"stacked-area"},"attribution":{"groupBy":"model","view":"list"}}`
 )
 
 type storyRenderRequest struct {
@@ -146,7 +151,9 @@ func parseStoryAppPath(raw string) (*url.URL, error) {
 func (s *Server) storyTargetURL(appPath *url.URL) string {
 	u := s.storyBaseURL()
 	u.Path = s.basePath + appPath.Path
-	u.RawQuery = appPath.RawQuery
+	q := appPath.Query()
+	q.Set("story", "1")
+	u.RawQuery = q.Encode()
 	return u.String()
 }
 
@@ -195,8 +202,8 @@ func (chromedpStoryRenderer) Render(
 		ctx,
 		append(chromedp.DefaultExecAllocatorOptions[:],
 			chromedp.WindowSize(
-				int(storyViewportWidth),
-				int(storyViewportHeight),
+				int(storyOutputWidth),
+				int(storyOutputHeight),
 			),
 		)...,
 	)
@@ -213,14 +220,21 @@ func (chromedpStoryRenderer) Render(
 		emulation.SetDeviceMetricsOverride(
 			storyViewportWidth,
 			storyViewportHeight,
-			1,
+			storyDeviceScaleFactor,
 			false,
+		),
+		chromedp.Navigate(req.SeedURL),
+		chromedp.WaitReady("body", chromedp.ByQuery),
+		chromedp.Evaluate(
+			setLocalStorageExpression(
+				storyUsageTogglesKey,
+				storyUsageTogglesValue,
+			),
+			nil,
 		),
 	}
 	if req.AuthToken != "" {
 		actions = append(actions,
-			chromedp.Navigate(req.SeedURL),
-			chromedp.WaitReady("body", chromedp.ByQuery),
 			chromedp.Evaluate(
 				setLocalStorageExpression(storyAuthTokenKey, req.AuthToken),
 				nil,

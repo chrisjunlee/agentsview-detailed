@@ -156,7 +156,7 @@ func TestHandleStoryRendersPNG(t *testing.T) {
 	if calls != 1 {
 		t.Fatalf("renderer calls = %d, want 1", calls)
 	}
-	wantURL := "http://127.0.0.1:0/viewer/usage?from=2026-05-08&to=2026-05-08"
+	wantURL := "http://127.0.0.1:0/viewer/usage?from=2026-05-08&story=1&to=2026-05-08"
 	if gotReq.URL != wantURL {
 		t.Fatalf("URL = %q, want %q", gotReq.URL, wantURL)
 	}

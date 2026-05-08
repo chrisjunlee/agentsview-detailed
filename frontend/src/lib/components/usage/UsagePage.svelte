@@ -29,6 +29,7 @@
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
   let unsubEvents: (() => void) | undefined;
   let mounted = false;
+  const storyMode = $derived(router.params["story"] === "1");
 
   const projectItems = $derived(
     sessions.projects.map((p) => ({
@@ -275,75 +276,77 @@
   });
 </script>
 
-<div class="usage-page">
-  <div class="usage-toolbar">
-    <div class="toolbar-controls">
-      <div class="usage-filter-anchor">
-        <SessionFilterControl
-          showDisplay={false}
-          showStarred={false}
-          align="left"
-          extraActive={usage.hasActiveFilters || !!sessions.filters.project}
-          onClearExtra={() => {
-            sessions.filters.project = "";
-            usage.clearFilters();
+<div class="usage-page" class:story={storyMode}>
+  {#if !storyMode}
+    <div class="usage-toolbar">
+      <div class="toolbar-controls">
+        <div class="usage-filter-anchor">
+          <SessionFilterControl
+            showDisplay={false}
+            showStarred={false}
+            align="left"
+            extraActive={usage.hasActiveFilters || !!sessions.filters.project}
+            onClearExtra={() => {
+              sessions.filters.project = "";
+              usage.clearFilters();
+            }}
+          />
+        </div>
+
+        <DateRangeSelector
+          from={usage.from}
+          to={usage.to}
+          fromTime={usage.fromTime}
+          toTime={usage.toTime}
+          onChange={(from, to) => usage.setDateRange(from, to)}
+          onTimeChange={(ft, tt) => usage.setTimeRange(ft, tt)}
+          onPreset={(days) => {
+            preserveDefaultWindowDays =
+              days === USAGE_DEFAULT_WINDOW_DAYS;
+            usage.setRollingWindow(days);
           }}
         />
-      </div>
 
-      <DateRangeSelector
-        from={usage.from}
-        to={usage.to}
-        fromTime={usage.fromTime}
-        toTime={usage.toTime}
-        onChange={(from, to) => usage.setDateRange(from, to)}
-        onTimeChange={(ft, tt) => usage.setTimeRange(ft, tt)}
-        onPreset={(days) => {
-          preserveDefaultWindowDays =
-            days === USAGE_DEFAULT_WINDOW_DAYS;
-          usage.setRollingWindow(days);
-        }}
-      />
+        <FilterDropdown
+          label="Project"
+          items={projectItems}
+          excludedCsv={usage.excludedProjects}
+          onToggle={(name) => usage.toggleProject(name)}
+          onSelectAll={() => usage.selectAllProjects()}
+          onDeselectAll={() =>
+            usage.deselectAllProjects(projectItems.map((p) => p.name))}
+        />
 
-      <FilterDropdown
-        label="Project"
-        items={projectItems}
-        excludedCsv={usage.excludedProjects}
-        onToggle={(name) => usage.toggleProject(name)}
-        onSelectAll={() => usage.selectAllProjects()}
-        onDeselectAll={() =>
-          usage.deselectAllProjects(projectItems.map((p) => p.name))}
-      />
+        <FilterDropdown
+          label="Model"
+          items={modelItems}
+          excludedCsv={usage.selectedModels}
+          mode="include"
+          onToggle={(name) => usage.toggleModel(name)}
+          onSelectAll={() => usage.selectAllModels()}
+          onDeselectAll={() =>
+            usage.deselectAllModels(modelItems.map((m) => m.name))}
+        />
 
-      <FilterDropdown
-        label="Model"
-        items={modelItems}
-        excludedCsv={usage.selectedModels}
-        mode="include"
-        onToggle={(name) => usage.toggleModel(name)}
-        onSelectAll={() => usage.selectAllModels()}
-        onDeselectAll={() =>
-          usage.deselectAllModels(modelItems.map((m) => m.name))}
-      />
-
-      <button
-        class="refresh-btn"
-        onclick={() => usage.fetchAll()}
-        title="Refresh"
-        aria-label="Refresh usage data"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 16 16"
-          fill="currentColor"
+        <button
+          class="refresh-btn"
+          onclick={() => usage.fetchAll()}
+          title="Refresh"
+          aria-label="Refresh usage data"
         >
-          <path d="M8 3a5 5 0 00-4.546 2.914.5.5 0 01-.908-.418A6 6 0 0114 8a.5.5 0 01-1 0 5 5 0 00-5-5zm4.546 7.086a.5.5 0 01.908.418A6 6 0 012 8a.5.5 0 011 0 5 5 0 005 5 5 5 0 004.546-2.914z" />
-        </svg>
-      </button>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+          >
+            <path d="M8 3a5 5 0 00-4.546 2.914.5.5 0 01-.908-.418A6 6 0 0114 8a.5.5 0 01-1 0 5 5 0 00-5-5zm4.546 7.086a.5.5 0 01.908.418A6 6 0 012 8a.5.5 0 011 0 5 5 0 005 5 5 0 004.546-2.914z" />
+          </svg>
+        </button>
 
+      </div>
     </div>
-  </div>
+  {/if}
 
   <SessionActiveFilters
     modelFilters={selectedModels}
@@ -355,22 +358,24 @@
   <div class="usage-content">
     <UsageSummaryCards />
 
-    <div class="chart-panel wide">
+    <div class="chart-panel wide cost-panel">
       <CostTimeSeriesChart />
     </div>
 
-    <div class="chart-panel wide">
+    <div class="chart-panel wide attribution-card">
       <AttributionPanel />
     </div>
 
-    <div class="bottom-grid">
-      <div class="chart-panel">
-        <TopSessionsTable />
+    {#if !storyMode}
+      <div class="bottom-grid">
+        <div class="chart-panel">
+          <TopSessionsTable />
+        </div>
+        <div class="chart-panel">
+          <CacheEfficiencyPanel />
+        </div>
       </div>
-      <div class="chart-panel">
-        <CacheEfficiencyPanel />
-      </div>
-    </div>
+    {/if}
   </div>
 </div>
 
@@ -431,6 +436,14 @@
     gap: 16px;
   }
 
+  .usage-page.story .usage-content {
+    padding: 9px 16px 16px;
+  }
+
+  .usage-page.story :global(.summary-cards .card) {
+    min-width: 150px;
+  }
+
   .chart-panel {
     background: var(--bg-surface);
     border: 1px solid var(--border-muted);
@@ -441,6 +454,10 @@
 
   .chart-panel.wide {
     width: 100%;
+  }
+
+  .usage-page.story .attribution-card {
+    min-height: 300px;
   }
 
   .bottom-grid {

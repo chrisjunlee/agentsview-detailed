@@ -293,6 +293,18 @@ describe("RouterStore", () => {
     });
   });
 
+  it("preserves story param in replaceParams", () => {
+    setURL("/usage?story=1");
+    store = new RouterStore();
+    store.replaceParams({ window_days: "1" });
+    expect(window.location.search).toContain("story=1");
+    expect(window.location.search).toContain("window_days=1");
+    expect(store.params).toEqual({
+      story: "1",
+      window_days: "1",
+    });
+  });
+
   it("routing params override sticky params", () => {
     setURL("/sessions?desktop");
     store = new RouterStore();
