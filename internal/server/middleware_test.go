@@ -335,6 +335,35 @@ func TestCSPMiddlewareAllowsSameOriginStoryFrame(t *testing.T) {
 	}
 }
 
+func TestCSPMiddlewareAllowsInlineScriptOnStoryPage(t *testing.T) {
+	t.Parallel()
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := cspMiddleware(
+		"127.0.0.1", 8081, nil, nil, "", inner,
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/story", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	csp := w.Header().Get("Content-Security-Policy")
+	if !strings.Contains(
+		csp,
+		"script-src 'self' http://127.0.0.1:8081 'unsafe-inline'",
+	) {
+		t.Fatalf("CSP = %q, want inline script allowed for story page", csp)
+	}
+	if !strings.Contains(csp, "frame-ancestors 'none'") {
+		t.Fatalf("CSP = %q, want story page frame-ancestors none", csp)
+	}
+	if xfo := w.Header().Get("X-Frame-Options"); xfo != "DENY" {
+		t.Fatalf("X-Frame-Options = %q, want DENY", xfo)
+	}
+}
+
 func TestCORSMiddlewareMergesVaryHeader(t *testing.T) {
 	t.Parallel()
 

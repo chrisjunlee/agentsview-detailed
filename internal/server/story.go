@@ -109,10 +109,23 @@ func (s *Server) handleStoryPage(w http.ResponseWriter, r *http.Request) {
     html,
     body {
       margin: 0;
-      width: %dpx;
-      min-height: %dpx;
-      overflow: hidden;
+      width: 100%%;
+      height: 100%%;
       background: #f3f4f6;
+    }
+
+    body {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .story-stage {
+      width: %dpx;
+      height: %dpx;
+      flex: 0 0 auto;
+      position: relative;
     }
 
     .story-shell {
@@ -120,6 +133,7 @@ func (s *Server) handleStoryPage(w http.ResponseWriter, r *http.Request) {
       height: %dpx;
       overflow: hidden;
       background: #f3f4f6;
+      transform-origin: top left;
     }
 
     .story-frame {
@@ -133,9 +147,31 @@ func (s *Server) handleStoryPage(w http.ResponseWriter, r *http.Request) {
   </style>
 </head>
 <body>
-  <main class="story-shell">
-    <iframe class="story-frame" src="%s" title="agentsview story"></iframe>
-  </main>
+  <div class="story-stage">
+    <main class="story-shell">
+      <iframe class="story-frame" src="%s" title="agentsview story"></iframe>
+    </main>
+  </div>
+  <script>
+    const storyWidth = %d;
+    const storyHeight = %d;
+    const stage = document.querySelector(".story-stage");
+    const shell = document.querySelector(".story-shell");
+
+    function fitStory() {
+      const scale = Math.min(
+        1,
+        window.innerWidth / storyWidth,
+        window.innerHeight / storyHeight,
+      );
+      stage.style.width = String(storyWidth * scale) + "px";
+      stage.style.height = String(storyHeight * scale) + "px";
+      shell.style.transform = "scale(" + scale + ")";
+    }
+
+    window.addEventListener("resize", fitStory);
+    fitStory();
+  </script>
 </body>
 </html>
 `,
@@ -148,6 +184,8 @@ func (s *Server) handleStoryPage(w http.ResponseWriter, r *http.Request) {
 		storyViewportHeight,
 		storyDeviceScaleFactor,
 		html.EscapeString(targetPath),
+		storyOutputWidth,
+		storyOutputHeight,
 	)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

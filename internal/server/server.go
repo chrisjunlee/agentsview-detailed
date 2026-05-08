@@ -469,12 +469,22 @@ func (s *Server) Handler() http.Handler {
 // intersection narrows to the actual runtime port.
 func cspMiddleware(host string, port int, publicOrigins []string, bindAllIPs map[string]bool, basePath string, next http.Handler) http.Handler {
 	policy := buildCSPPolicy(host, port, publicOrigins, bindAllIPs, basePath)
+	storyPagePolicy := buildCSPPolicyWithOptions(
+		host, port, publicOrigins, bindAllIPs, basePath,
+		cspPolicyOptions{
+			frameAncestors:    "'none'",
+			allowInlineScript: true,
+		},
+	)
 	storyFramePolicy := buildCSPPolicyWithFrameAncestors(
 		host, port, publicOrigins, bindAllIPs, basePath, "'self'",
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
-			if r.URL.Query().Get("story") == "1" {
+			if r.URL.Path == "/story" {
+				w.Header().Set("Content-Security-Policy", storyPagePolicy)
+				w.Header().Set("X-Frame-Options", "DENY")
+			} else if r.URL.Query().Get("story") == "1" {
 				w.Header().Set("Content-Security-Policy", storyFramePolicy)
 			} else {
 				w.Header().Set("Content-Security-Policy", policy)
@@ -508,6 +518,25 @@ func buildCSPPolicyWithFrameAncestors(
 	bindAllIPs map[string]bool,
 	basePath string,
 	frameAncestors string,
+) string {
+	return buildCSPPolicyWithOptions(
+		host, port, publicOrigins, bindAllIPs, basePath,
+		cspPolicyOptions{frameAncestors: frameAncestors},
+	)
+}
+
+type cspPolicyOptions struct {
+	frameAncestors    string
+	allowInlineScript bool
+}
+
+func buildCSPPolicyWithOptions(
+	host string,
+	port int,
+	publicOrigins []string,
+	bindAllIPs map[string]bool,
+	basePath string,
+	opts cspPolicyOptions,
 ) string {
 	// serverOrigin is the pinned http origin for the configured
 	// host:port, used in all directives so resources load
@@ -562,6 +591,10 @@ func buildCSPPolicyWithFrameAncestors(
 
 	// resource-src: 'self' + pinned server origin (for all resource types)
 	resourceSrc := "'self' " + serverOrigin
+	scriptSrc := resourceSrc
+	if opts.allowInlineScript {
+		scriptSrc += " 'unsafe-inline'"
+	}
 
 	// connect-src: resource-src + loopback/LAN/public origins + ws variants
 	connectParts := []string{resourceSrc}
@@ -575,18 +608,22 @@ func buildCSPPolicyWithFrameAncestors(
 	if basePath != "" {
 		baseURI = "'self'"
 	}
+	frameAncestors := opts.frameAncestors
+	if frameAncestors == "" {
+		frameAncestors = "'none'"
+	}
 
 	return fmt.Sprintf(
 		"default-src %[1]s; "+
-			"script-src %[1]s; "+
+			"script-src %[4]s; "+
 			"connect-src %[2]s; "+
 			"img-src %[1]s data:; "+
 			"style-src %[1]s 'unsafe-inline' https://fonts.googleapis.com; "+
 			"font-src %[1]s data: https://fonts.gstatic.com; "+
 			"object-src 'none'; "+
 			"base-uri %[3]s; "+
-			"frame-ancestors %[4]s",
-		resourceSrc, connectSrc, baseURI, frameAncestors,
+			"frame-ancestors %[5]s",
+		resourceSrc, connectSrc, baseURI, scriptSrc, frameAncestors,
 	)
 }
 

@@ -191,6 +191,13 @@ func TestHandleStoryPageRendersBrowserWrapper(t *testing.T) {
 
 	assertRecorderStatus(t, w, http.StatusOK)
 	assertContentType(t, w, "text/html; charset=utf-8")
+	csp := w.Header().Get("Content-Security-Policy")
+	if !strings.Contains(
+		csp,
+		"script-src 'self' http://127.0.0.1:0 'unsafe-inline'",
+	) {
+		t.Fatalf("CSP = %q, want inline script allowed for story wrapper", csp)
+	}
 	body := w.Body.String()
 	for _, want := range []string{
 		`width: 1080px;`,
