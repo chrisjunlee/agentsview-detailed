@@ -25,6 +25,23 @@
   import SessionActiveFilters from "../filters/SessionActiveFilters.svelte";
   import FilterDropdown from "./FilterDropdown.svelte";
 
+  function formatStoryPeriod(from: string, to: string): string {
+    const f = new Date(from + "T00:00:00");
+    const t = new Date(to + "T00:00:00");
+    const sameYear = f.getFullYear() === t.getFullYear();
+    const fromOpts: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+    };
+    if (!sameYear) fromOpts.year = "numeric";
+    const toOpts: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    };
+    return `${f.toLocaleDateString("en", fromOpts)} – ${t.toLocaleDateString("en", toOpts)}`;
+  }
+
   const REFRESH_MS = 5 * 60 * 1000;
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
   let unsubEvents: (() => void) | undefined;
@@ -367,10 +384,15 @@
   />
 
   <div class="usage-content">
-    <UsageSummaryCards />
+    <UsageSummaryCards {storyMode} />
 
     <div class="chart-panel wide cost-panel">
       <CostTimeSeriesChart />
+      {#if storyMode}
+        <span class="story-period-label">
+          {formatStoryPeriod(usage.from, usage.to)}
+        </span>
+      {/if}
     </div>
 
     <div class="chart-panel wide attribution-card">
@@ -469,6 +491,57 @@
 
   .usage-page.story .attribution-card {
     min-height: 300px;
+  }
+
+  .story-period-label {
+    display: block;
+    text-align: right;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.01em;
+    margin-top: 4px;
+  }
+
+  /* Story: attribution list fonts 1.3× bigger */
+  .usage-page.story :global(.list-label) {
+    font-size: 14px;
+  }
+  .usage-page.story :global(.list-cost) {
+    font-size: 14px;
+  }
+  .usage-page.story :global(.list-pct) {
+    font-size: 13px;
+  }
+  .usage-page.story :global(.list-rank) {
+    font-size: 13px;
+  }
+  .usage-page.story :global(.list-dot) {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Story: chart text 50% bigger */
+  .usage-page.story :global(.cost-panel .chart-title) {
+    font-size: 18px;
+  }
+  .usage-page.story :global(.y-label) {
+    font-size: 14px;
+  }
+  .usage-page.story :global(.x-label) {
+    font-size: 14px;
+  }
+  .usage-page.story :global(.legend-item) {
+    font-size: 15px;
+  }
+  .usage-page.story :global(.legend-dot) {
+    width: 12px;
+    height: 12px;
+  }
+  .usage-page.story :global(.chart-svg) {
+    overflow: visible;
+  }
+  .usage-page.story :global(.chart-svg path) {
+    opacity: 0.85;
   }
 
   .bottom-grid {

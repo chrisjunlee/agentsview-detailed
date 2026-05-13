@@ -54,6 +54,11 @@ func withStoryRenderer(renderer storyRenderer) Option {
 }
 
 func (s *Server) handleStory(w http.ResponseWriter, r *http.Request) {
+	if wantsBrowserPage(r) {
+		s.handleStoryPage(w, r)
+		return
+	}
+
 	appPath, err := parseStoryAppPath(r.URL.Query().Get("path"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -89,6 +94,13 @@ func (s *Server) handleStory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(png)
+}
+
+func wantsBrowserPage(r *http.Request) bool {
+	if f := r.URL.Query().Get("format"); f != "" {
+		return f == "html"
+	}
+	return strings.Contains(r.Header.Get("Accept"), "text/html")
 }
 
 func (s *Server) handleStoryPage(w http.ResponseWriter, r *http.Request) {

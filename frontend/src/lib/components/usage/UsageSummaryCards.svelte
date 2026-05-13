@@ -1,4 +1,9 @@
 <script lang="ts">
+  interface Props {
+    storyMode?: boolean;
+  }
+  let { storyMode = false }: Props = $props();
+
   import { usage } from "../../stores/usage.svelte.js";
 
   function fmtCost(v: number): string {
@@ -132,10 +137,15 @@
       value: () => String(activeDays),
     },
   ];
+
+  const STORY_HIDDEN = new Set(["Peak Day", "Daily Burn", "Active Days"]);
+  const visibleCards = $derived(
+    storyMode ? cards.filter((c) => !STORY_HIDDEN.has(c.label)) : cards,
+  );
 </script>
 
 <div class="summary-cards">
-  {#each cards as card}
+  {#each visibleCards as card}
     <div
       class="card"
       class:featured={card.featured}
