@@ -64,7 +64,7 @@ CGO_ENABLED=1 go test -tags fts5 ./internal/pricing -run TestResolveModelAlias -
 
 ## Task 1: Confirm The Red/Green Baseline
 
-- [ ] **Step 1: Check repo state**
+- [x] **Step 1: Check repo state**
 
 ```bash
 git status --short
@@ -73,7 +73,7 @@ git status --short
 Expected: test files and this plan may be modified. Do not overwrite unrelated
 user changes.
 
-- [ ] **Step 2: Run parser characterization**
+- [x] **Step 2: Run parser characterization**
 
 ```bash
 CGO_ENABLED=1 go test -tags fts5 ./internal/parser -run TestParseClaudeSession_ExtractsMessageIDAndRequestID -count=1
@@ -83,7 +83,7 @@ Expected: pass. If it fails, inspect
 `internal/parser/claude.go::extractClaudeTokenFields` and ensure it reads
 `message.model` into `msg.Model`.
 
-- [ ] **Step 3: Run alias guard**
+- [x] **Step 3: Run alias guard**
 
 ```bash
 CGO_ENABLED=1 go test -tags fts5 ./internal/pricing -run TestResolveModelAlias -count=1
@@ -92,7 +92,7 @@ CGO_ENABLED=1 go test -tags fts5 ./internal/pricing -run TestResolveModelAlias -
 Expected: pass. Do not add an alias for `claude-opus-4-8`; the test expects the
 canonical ID to remain unchanged.
 
-- [ ] **Step 4: Run pricing red tests**
+- [x] **Step 4: Run pricing red tests**
 
 ```bash
 CGO_ENABLED=1 go test -tags fts5 ./internal/pricing -run 'TestFallbackPricing|TestFallbackVersionBumpedForOpus48|TestParseLiteLLMPricing' -count=1
@@ -101,7 +101,7 @@ CGO_ENABLED=1 go test -tags fts5 ./internal/pricing -run 'TestFallbackPricing|Te
 Expected: fail because `claude-opus-4-8` is missing from fallback pricing and
 `FallbackVersion` is still the old value.
 
-- [ ] **Step 5: Run DB usage red test**
+- [x] **Step 5: Run DB usage red test**
 
 ```bash
 CGO_ENABLED=1 go test -tags fts5 ./internal/db -run TestGetDailyUsageUsesOpus48FallbackPricing -count=1
@@ -112,7 +112,7 @@ Expected: fail because the seeded fallback pricing does not include
 
 ## Task 2: Implement Fallback Pricing
 
-- [ ] **Step 1: Open `internal/pricing/fallback.go`**
+- [x] **Step 1: Open `internal/pricing/fallback.go`**
 
 Find:
 
@@ -126,7 +126,7 @@ Change it to:
 const FallbackVersion = "2026-05-30.1"
 ```
 
-- [ ] **Step 2: Add the Opus 4.8 pricing row**
+- [x] **Step 2: Add the Opus 4.8 pricing row**
 
 In `FallbackPricing()`, add this entry near the current Claude model rows,
 immediately after `claude-opus-4-6`:
@@ -141,13 +141,13 @@ immediately after `claude-opus-4-6`:
 },
 ```
 
-- [ ] **Step 3: Format**
+- [x] **Step 3: Format**
 
 ```bash
 gofmt -w internal/pricing/fallback.go
 ```
 
-- [ ] **Step 4: Re-run pricing tests**
+- [x] **Step 4: Re-run pricing tests**
 
 ```bash
 CGO_ENABLED=1 go test -tags fts5 ./internal/pricing -count=1
@@ -157,7 +157,7 @@ Expected: pass.
 
 ## Task 3: Prove DB Usage Now Prices Opus 4.8
 
-- [ ] **Step 1: Run the focused DB test**
+- [x] **Step 1: Run the focused DB test**
 
 ```bash
 CGO_ENABLED=1 go test -tags fts5 ./internal/db -run TestGetDailyUsageUsesOpus48FallbackPricing -count=1
@@ -184,7 +184,7 @@ Do not normalize the model name.
 
 ## Task 4: Full Verification
 
-- [ ] **Step 1: Format all Go files**
+- [x] **Step 1: Format all Go files**
 
 ```bash
 gofmt -w internal/parser/claude_parser_test.go \
@@ -195,7 +195,7 @@ gofmt -w internal/parser/claude_parser_test.go \
          internal/db/usage_test.go
 ```
 
-- [ ] **Step 2: Run targeted package tests**
+- [x] **Step 2: Run targeted package tests**
 
 ```bash
 CGO_ENABLED=1 go test -tags fts5 ./internal/parser ./internal/pricing ./internal/db -count=1
@@ -203,7 +203,7 @@ CGO_ENABLED=1 go test -tags fts5 ./internal/parser ./internal/pricing ./internal
 
 Expected: pass.
 
-- [ ] **Step 3: Run required checks**
+- [x] **Step 3: Run required checks**
 
 ```bash
 go vet ./...
@@ -213,14 +213,14 @@ make build
 
 Expected: all pass.
 
-- [ ] **Step 4: Restart the embedded runtime**
+- [x] **Step 4: Restart the embedded runtime**
 
 ```bash
 pkill -f 'agentsview serve' 2>/dev/null; sleep 0.5
 /Users/christopherlee/projects/pi-usage/agentsview/agentsview serve &
 ```
 
-- [ ] **Step 5: Runtime smoke**
+- [x] **Step 5: Runtime smoke**
 
 Call `/api/v1/usage/summary` for a date range that contains local Opus 4.8
 Claude transcripts and confirm `claude-opus-4-8` has nonzero tokens and nonzero
@@ -232,14 +232,14 @@ or stale fallback seed. Confirm the SQLite `model_pricing` table has a
 
 ## Task 5: Commit
 
-- [ ] **Step 1: Review changes**
+- [x] **Step 1: Review changes**
 
 ```bash
 git status --short
 git diff
 ```
 
-- [ ] **Step 2: Stage only intended files**
+- [x] **Step 2: Stage only intended files**
 
 ```bash
 git add docs/superpowers/plans/2026-05-30-claude-opus-4-8-usage.md \
@@ -251,7 +251,7 @@ git add docs/superpowers/plans/2026-05-30-claude-opus-4-8-usage.md \
         internal/db/usage_test.go
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "feat: recognize claude opus 4.8 usage"
