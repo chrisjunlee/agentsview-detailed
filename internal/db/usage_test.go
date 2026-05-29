@@ -9,7 +9,25 @@ import (
 	"time"
 
 	"github.com/wesm/agentsview/internal/config"
+	"github.com/wesm/agentsview/internal/pricing"
 )
+
+func upsertFallbackPricing(t *testing.T, d *DB) {
+	t.Helper()
+
+	fallback := pricing.FallbackPricing()
+	rows := make([]ModelPricing, 0, len(fallback))
+	for _, p := range fallback {
+		rows = append(rows, ModelPricing{
+			ModelPattern:         p.ModelPattern,
+			InputPerMTok:         p.InputPerMTok,
+			OutputPerMTok:        p.OutputPerMTok,
+			CacheCreationPerMTok: p.CacheCreationPerMTok,
+			CacheReadPerMTok:     p.CacheReadPerMTok,
+		})
+	}
+	requireNoError(t, d.UpsertModelPricing(rows), "UpsertModelPricing fallback")
+}
 
 func TestGetDailyUsageEmpty(t *testing.T) {
 	d := testDB(t)
@@ -125,6 +143,85 @@ func TestGetDailyUsageWithData(t *testing.T) {
 	if math.Abs(result.Totals.TotalCost-wantCost) > 1e-9 {
 		t.Errorf("Totals.TotalCost = %v, want %v",
 			result.Totals.TotalCost, wantCost)
+	}
+}
+
+func TestGetDailyUsageUsesOpus48FallbackPricing(t *testing.T) {
+	d := testDB(t)
+	ctx := context.Background()
+	upsertFallbackPricing(t, d)
+
+	started := "2026-05-30T10:00:00Z"
+	ended := "2026-05-30T11:00:00Z"
+	insertSession(t, d, "opus48-usage", "proj-opus48", func(s *Session) {
+		s.Agent = "claude"
+		s.StartedAt = &started
+		s.EndedAt = &ended
+	})
+
+	insertMessages(t, d, Message{
+		SessionID: "opus48-usage",
+		Ordinal:   0,
+		Role:      "assistant",
+		Timestamp: "2026-05-30T10:30:00Z",
+		Model:     "claude-opus-4-8",
+		TokenUsage: json.RawMessage(
+			`{"input_tokens":1000000,` +
+				`"output_tokens":100000,` +
+				`"cache_creation_input_tokens":200000,` +
+				`"cache_read_input_tokens":300000}`,
+		),
+	})
+
+	result, err := d.GetDailyUsage(ctx, UsageFilter{
+		From:       "2026-05-30",
+		To:         "2026-05-30",
+		Timezone:   "UTC",
+		Breakdowns: true,
+	})
+	requireNoError(t, err, "GetDailyUsage opus 4.8")
+
+	if len(result.Daily) != 1 {
+		t.Fatalf("got %d daily entries, want 1", len(result.Daily))
+	}
+
+	const wantCost = 8.90
+	day := result.Daily[0]
+	if day.Date != "2026-05-30" {
+		t.Errorf("Date = %q, want 2026-05-30", day.Date)
+	}
+	if day.InputTokens != 1000000 {
+		t.Errorf("InputTokens = %d, want 1000000", day.InputTokens)
+	}
+	if day.OutputTokens != 100000 {
+		t.Errorf("OutputTokens = %d, want 100000", day.OutputTokens)
+	}
+	if day.CacheCreationTokens != 200000 {
+		t.Errorf("CacheCreationTokens = %d, want 200000", day.CacheCreationTokens)
+	}
+	if day.CacheReadTokens != 300000 {
+		t.Errorf("CacheReadTokens = %d, want 300000", day.CacheReadTokens)
+	}
+	if math.Abs(day.TotalCost-wantCost) > 1e-9 {
+		t.Errorf("TotalCost = %v, want %v", day.TotalCost, wantCost)
+	}
+	if math.Abs(result.Totals.TotalCost-wantCost) > 1e-9 {
+		t.Errorf("Totals.TotalCost = %v, want %v",
+			result.Totals.TotalCost, wantCost)
+	}
+	if len(day.ModelsUsed) != 1 || day.ModelsUsed[0] != "claude-opus-4-8" {
+		t.Errorf("ModelsUsed = %v, want [claude-opus-4-8]", day.ModelsUsed)
+	}
+	if len(day.ModelBreakdowns) != 1 {
+		t.Fatalf("ModelBreakdowns = %d, want 1", len(day.ModelBreakdowns))
+	}
+	if day.ModelBreakdowns[0].ModelName != "claude-opus-4-8" {
+		t.Errorf("ModelBreakdowns[0].ModelName = %q, want claude-opus-4-8",
+			day.ModelBreakdowns[0].ModelName)
+	}
+	if math.Abs(day.ModelBreakdowns[0].Cost-wantCost) > 1e-9 {
+		t.Errorf("ModelBreakdowns[0].Cost = %v, want %v",
+			day.ModelBreakdowns[0].Cost, wantCost)
 	}
 }
 

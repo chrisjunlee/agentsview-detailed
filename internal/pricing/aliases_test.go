@@ -28,6 +28,7 @@ func TestResolveModelAlias(t *testing.T) {
 		{"nemotron-3-super-free", "nvidia.nemotron-super-3-120b"},
 		// Unknown model returns unchanged
 		{"claude-sonnet-4-6", "claude-sonnet-4-6"},
+		{"claude-opus-4-8", "claude-opus-4-8"},
 		{"some-local-model", "some-local-model"},
 	}
 

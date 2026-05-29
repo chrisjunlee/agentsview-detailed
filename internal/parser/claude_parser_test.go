@@ -953,7 +953,7 @@ func TestParseClaudeSession_ExtractsMessageIDAndRequestID(t *testing.T) {
 	line := `{"type":"assistant","uuid":"u1","parentUuid":"",` +
 		`"timestamp":"2026-04-10T10:00:00.000Z",` +
 		`"requestId":"req_01ABC",` +
-		`"message":{"id":"msg_01XYZ","model":"claude-opus-4-6",` +
+		`"message":{"id":"msg_01XYZ","model":"claude-opus-4-8",` +
 		`"content":[{"type":"text","text":"hi"}],` +
 		`"usage":{"input_tokens":10,"output_tokens":20,` +
 		`"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}`
@@ -973,6 +973,9 @@ func TestParseClaudeSession_ExtractsMessageIDAndRequestID(t *testing.T) {
 		t.Fatalf("messages = %d, want 1", len(msgs))
 	}
 	m := msgs[0]
+	if m.Model != "claude-opus-4-8" {
+		t.Errorf("Model = %q, want claude-opus-4-8", m.Model)
+	}
 	if m.ClaudeMessageID != "msg_01XYZ" {
 		t.Errorf("ClaudeMessageID = %q, want msg_01XYZ", m.ClaudeMessageID)
 	}
