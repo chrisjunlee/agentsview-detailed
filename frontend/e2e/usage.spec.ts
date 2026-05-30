@@ -168,6 +168,50 @@ test.describe("Usage page", () => {
     await expect(page).toHaveURL(/\/usage\?window_days=1$/);
   });
 
+  test("preserves pinned date range across a tab switch", async ({
+    page,
+  }) => {
+    // Regression guard for commit 8c733be. Pinning a date range and then
+    // leaving and re-entering /usage via the in-app nav (a bare /usage
+    // navigation with no URL params) must PRESERVE the pin. The pre-fix
+    // bug reset isPinned on bare navigation, rolling the range back to the
+    // default rolling window and dropping from/to from the URL.
+
+    // Deep-link a pinned date range; the write-back keeps from/to in the URL.
+    await page.goto("/usage?from=2026-01-01&to=2026-01-31");
+    await expect(
+      page.locator(".usage-page"),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/from=2026-01-01/);
+    await expect(page).toHaveURL(/to=2026-01-31/);
+
+    // Switch to another tab via client-side nav (no full reload), so the
+    // in-memory usage store keeps isPinned while UsagePage unmounts.
+    await page
+      .locator('.nav-btn[aria-label="Sessions"]')
+      .click();
+    await expect(page).toHaveURL(/\/sessions/);
+
+    // Switch back via the Usage nav button: router.navigate("usage") pushes
+    // a bare /usage (from/to are not sticky params), re-running URL-init
+    // with empty params.
+    await page
+      .locator('.nav-btn[aria-label="Usage"]')
+      .click();
+    await expect(
+      page.locator(".usage-page"),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // The pin survived: isPinned stayed true, so the write-back re-adds
+    // from/to to the URL. With the pre-fix bug these params would be gone.
+    await expect(page).toHaveURL(/from=2026-01-01/, {
+      timeout: 10_000,
+    });
+    await expect(page).toHaveURL(/to=2026-01-31/, {
+      timeout: 10_000,
+    });
+  });
+
   test("URL updates when filter changes", async ({ page }) => {
     // Wait for data.
     await expect(
